@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "scenario_id": "df8da9be-d664-40ae-a5b2-e7575e0dd445",
+  "skill_id": "05d392ae-282c-4a55-a80f-74ebb62760a3",
+  "sort_order": 24,
+  "tools": {
+    "amp": true,
+    "antigravity": true,
+    "claude_code": true,
+    "cline": true,
+    "codex": true,
+    "cursor": true,
+    "droid": true,
+    "gemini_cli": true,
+    "github_copilot": true,
+    "hermes": true,
+    "kimi": true,
+    "kiro": true,
+    "openclaw": true,
+    "opencode": true,
+    "pi": true,
+    "windsurf": true
+  }
+}

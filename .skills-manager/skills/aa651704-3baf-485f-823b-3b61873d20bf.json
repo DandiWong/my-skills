@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "aa651704-3baf-485f-823b-3b61873d20bf",
+  "path": "dbs-restore",
+  "path_key": "dbs-restore",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "git@github.com:dontbesilent2025/dbskill.git",
+    "subpath": "skills/dbs-restore",
+    "branch": null
+  }
+}

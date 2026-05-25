@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "7a0f2aed-5542-4db1-af9e-6b34a11c8f6e",
+  "path": "frontend-design-2",
+  "path_key": "frontend-design-2",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "skillssh",
+    "ref": "pbakaus/impeccable/frontend-design",
+    "subpath": "skill",
+    "branch": null
+  }
+}

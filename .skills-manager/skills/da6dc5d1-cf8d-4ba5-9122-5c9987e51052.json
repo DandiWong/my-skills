@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "da6dc5d1-cf8d-4ba5-9122-5c9987e51052",
+  "path": "dbs-good-question",
+  "path_key": "dbs-good-question",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "git@github.com:dontbesilent2025/dbskill.git",
+    "subpath": "skills/dbs-good-question",
+    "branch": null
+  }
+}

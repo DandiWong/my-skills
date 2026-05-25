@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "c169bdc3-cbad-4ed5-962f-5d8deece9bf7",
+  "path": "dbs-ai-check",
+  "path_key": "dbs-ai-check",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "git@github.com:dontbesilent2025/dbskill.git",
+    "subpath": "skills/dbs-ai-check",
+    "branch": null
+  }
+}

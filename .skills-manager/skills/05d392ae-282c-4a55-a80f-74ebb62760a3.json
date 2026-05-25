@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "05d392ae-282c-4a55-a80f-74ebb62760a3",
+  "path": "karpathy-LLM-Wiki",
+  "path_key": "karpathy-llm-wiki",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "git@github.com:multica-ai/andrej-karpathy-skills.git",
+    "subpath": "skills/karpathy-guidelines",
+    "branch": null
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "7aa54655-3e00-4ee0-b319-4467d63a80b3",
+  "path": "learn",
+  "path_key": "learn",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "git@github.com:tw93/Waza.git",
+    "subpath": "skills/learn",
+    "branch": null
+  }
+}

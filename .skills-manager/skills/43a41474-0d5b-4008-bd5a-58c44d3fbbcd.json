@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "43a41474-0d5b-4008-bd5a-58c44d3fbbcd",
+  "path": "think",
+  "path_key": "think",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "git@github.com:tw93/Waza.git",
+    "subpath": "skills/think",
+    "branch": null
+  }
+}

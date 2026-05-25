@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "8da4bc1a-a6f9-43d8-a8ff-8e6318b68eea",
+  "path": "nano-banana-2",
+  "path_key": "nano-banana-2",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "skillssh",
+    "ref": "agentspace-so/runcomfy-agent-skills/nano-banana-2",
+    "subpath": "nano-banana-2",
+    "branch": null
+  }
+}

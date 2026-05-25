@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "9ef02b91-a9a3-4feb-879a-1feb698173ea",
+  "path": "dbs",
+  "path_key": "dbs",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "git@github.com:dontbesilent2025/dbskill.git",
+    "subpath": "skills/dbs",
+    "branch": null
+  }
+}

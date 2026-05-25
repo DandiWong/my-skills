@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "631ebec1-a6bf-48ef-a1fb-d4f89d993c3d",
+  "path": "dbs-agent-migration",
+  "path_key": "dbs-agent-migration",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "git@github.com:dontbesilent2025/dbskill.git",
+    "subpath": "skills/dbs-agent-migration",
+    "branch": null
+  }
+}

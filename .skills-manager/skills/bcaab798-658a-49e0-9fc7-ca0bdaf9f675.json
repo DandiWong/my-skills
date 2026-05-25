@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "bcaab798-658a-49e0-9fc7-ca0bdaf9f675",
+  "path": "dbs-hook",
+  "path_key": "dbs-hook",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "git@github.com:dontbesilent2025/dbskill.git",
+    "subpath": "skills/dbs-hook",
+    "branch": null
+  }
+}

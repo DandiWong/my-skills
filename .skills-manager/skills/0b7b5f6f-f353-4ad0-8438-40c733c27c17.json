@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "0b7b5f6f-f353-4ad0-8438-40c733c27c17",
+  "path": "dbs-learning",
+  "path_key": "dbs-learning",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "git@github.com:dontbesilent2025/dbskill.git",
+    "subpath": "skills/dbs-learning",
+    "branch": null
+  }
+}
