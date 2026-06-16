@@ -100,6 +100,15 @@
     letter-spacing: 2pt;
     text-transform: uppercase;
   }
+  /* 品牌 logo 槽(可选,来自 brand profile);默认无 logo,样式仅在取消注释后生效。 */
+  .brand-logo {
+    display: block;
+    height: 72px;
+    width: auto;
+    max-width: 200px;
+    object-fit: contain;
+    margin-bottom: 16pt;
+  }
   .cover-center {
     display: flex;
     flex-direction: column;
@@ -475,7 +484,12 @@
 
 <!-- ════════════ COVER ════════════ -->
 <div class="cover">
-  <div class="cover-top">{{年份 或 领域标签 · 如 "Selected Works 2023–2026"}}</div>
+  <div class="cover-head">
+    <!-- 品牌 logo 槽(可选,来自 brand profile 的 logo 字段)。无 logo 时保持注释,勿插破图。
+         有 logo 时取消注释,把 src 换成已展开的本地绝对路径:
+    <img class="brand-logo" src="/absolute/path/to/logo.svg" alt=""> -->
+    <div class="cover-top">{{年份 或 领域标签 · 如 "Selected Works 2023–2026"}}</div>
+  </div>
 
   <div class="cover-center">
     <div class="cover-name">{{名字<br>作品集}}</div>

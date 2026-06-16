@@ -1,0 +1,18 @@
+{
+  "name": "fosunpharma-meeting-minutes",
+  "version": "0.3.4",
+  "entry": "SKILL.md",
+  "breaking": false,
+  "files": [
+    "SKILL.md",
+    "requirements.txt",
+    "assets/reference.docx",
+    "scripts/check_env.py",
+    "scripts/generate_minutes_docx.py",
+    "scripts/repair_json_quotes.py",
+    "tests/test_generate_minutes_docx.py",
+    "tests/test_repair_json_quotes.py",
+    "CHANGELOG.md",
+    "manifest.json"
+  ]
+}

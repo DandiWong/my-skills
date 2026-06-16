@@ -56,6 +56,60 @@ Checks:
 - Reject paths outside the allowed root after symlink resolution.
 - Reproduce from a non-default cwd and through any UI entry point that supplies paths.
 
+## CLI Effect Scope Drift
+
+Signals: preview, dry-run, size, count, or report output is computed from one predicate, but execution mutates a broader or different set.
+
+Checks:
+- Trace display, dry-run, and mutation predicates to the same source of truth.
+- Compare planned paths or records with executor input in a regression test.
+- Assert partial failures report the exact skipped and completed items.
+
+## CLI Wrapper Or PATH Drift
+
+Signals: source-tree invocation works, but the installed command, package wrapper, PATH shim, completion, or package-manager install path runs old code or a different binary.
+
+Checks:
+- Inspect built package contents, shebang, executable bit, and wrapper target.
+- Reproduce through a temp prefix or package-manager install path, not only from source.
+- Check PATH order and use absolute system-tool paths where wrappers should not intercept.
+
+## Interactive Stdin Or TTY Hang
+
+Signals: CI stalls, spinner never finishes, a subprocess reads from the script body, or an auth prompt appears in non-interactive mode.
+
+Checks:
+- Reproduce with stdin redirected and with TTY/non-TTY paths separated.
+- Add test-mode or no-auth guards around real prompts and system changes.
+- Stub external prompt tools through PATH when timeout wrappers exec real binaries.
+
+## Subprocess Pipe Backpressure
+
+Signals: a long-running child process hangs only on large output, small fixtures pass, or the parent waits for exit before reading stdout/stderr. The child may be blocked on a full pipe buffer while the parent is blocked on `wait`.
+
+Checks:
+- Drain stdout and stderr while the process runs, or explicitly inherit/redirect streams when output is not needed.
+- Test with output larger than a typical pipe buffer, not only tiny fixtures.
+- Preserve stderr tails or structured error output for diagnostics without holding the whole stream in memory.
+
+## Signal Or Partial-Failure Mapping
+
+Signals: cancel, timeout, SIGINT, or SIGTERM is reported as success or as a normal business failure; temp files, locks, or operation logs make retries look complete.
+
+Checks:
+- Classify interrupted execution separately from success and expected validation failures.
+- Assert temp cleanup, lock release, and operation-log state after interruption.
+- Test retry and idempotency after a partial write.
+
+## CLI Stream Contract Regression
+
+Signals: automation breaks after human logs, progress output, JSON shape, stdout/stderr routing, or exit-code behavior changes.
+
+Checks:
+- Assert exit code, stdout, and stderr separately in CLI tests.
+- Keep human diagnostics off stdout for machine-readable modes.
+- Snapshot or parse JSON/schema output and include non-interactive coverage.
+
 ## Snapshot Rebuild Drops Carried Field
 
 Signals: live data shows up at the data source and on the wire but a downstream view sees it empty; the field has a default value (`var x: [T] = []`, `var y: Int? = nil`) that lets memberwise init compile without it; the symptom appears only on the path where the snapshot is rebuilt (icon resolution, decoration, redaction), not on a fresh fetch.
@@ -73,3 +127,12 @@ Checks:
 - Read the tool's man page for cold-start semantics. `top -l 2`, `iostat -d 2`, `vm_stat 1 2`, etc. all share this shape.
 - Slice the output to the latest sample (`.suffix(perSampleSize)` on parsed lines, or look for the second instance of the header row).
 - When in doubt, raise `-l` to 3 and confirm sample 2 and 3 agree; sample 1 stays zero.
+
+## Aggregation Key Variant
+
+Signals: a count, log roll-up, event tally, or per-category breakdown is short by some entries; the missing items share a trait (a system-derived path, a localized string, a prefixed command name); the base-form key matches but a derived variant (`<base>-system`, a suffix, a prefix) is silently dropped.
+
+Checks:
+- Before adding a category, grep every write site that produces this class of key and enumerate the real variants, not just the base form.
+- Match with `hasPrefix` / a regex / an explicit variant list rather than exact equality on the base key.
+- Add a fixture row for each known variant so a future key shape that escapes the matcher fails the test instead of the aggregate.

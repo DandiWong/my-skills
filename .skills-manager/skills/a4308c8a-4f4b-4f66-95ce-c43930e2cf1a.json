@@ -8,7 +8,7 @@
   "source": {
     "type": "skillssh",
     "ref": "heygen-com/hyperframes/gsap",
-    "subpath": "skills/gsap",
+    "subpath": "skills",
     "branch": null
   }
 }

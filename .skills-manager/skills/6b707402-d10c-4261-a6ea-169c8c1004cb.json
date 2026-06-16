@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "6b707402-d10c-4261-a6ea-169c8c1004cb",
+  "path": "baoyu-infographic",
+  "path_key": "baoyu-infographic",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "git@github.com:JimLiu/baoyu-skills.git",
+    "subpath": "skills/baoyu-infographic",
+    "branch": null
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "8711714e-133b-41c8-ba23-738df4b8b675",
+  "path": "fosunpharma-meeting-minutes",
+  "path_key": "fosunpharma-meeting-minutes",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "local",
+    "ref": null,
+    "subpath": null,
+    "branch": null
+  }
+}

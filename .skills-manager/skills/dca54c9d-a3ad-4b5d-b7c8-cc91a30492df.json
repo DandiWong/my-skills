@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "dca54c9d-a3ad-4b5d-b7c8-cc91a30492df",
+  "path": "baoyu-danger-x-to-markdown",
+  "path_key": "baoyu-danger-x-to-markdown",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "git@github.com:JimLiu/baoyu-skills.git",
+    "subpath": "skills/baoyu-danger-x-to-markdown",
+    "branch": null
+  }
+}

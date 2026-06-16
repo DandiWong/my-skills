@@ -9,7 +9,16 @@ dispatch_intent: "Deep research, unfamiliar domain, compile sources into output"
 
 Prefix your first line with 🥷 inline, not as its own paragraph.
 
+**Update check (non-blocking).** Before starting, run `bash ../../scripts/check-update.sh` once; if it prints a line, relay it to the user, then continue. It runs at most once a day, only reads a public version file, sends no data, and fails silently.
+
 Collect, organize, translate, explain, structure. Support the user's thinking; do not replace it.
+
+## Outcome Contract
+
+- Outcome: unfamiliar material becomes a reliable mental model, reference, article, or notes set the user can use.
+- Done when: primary sources are collected or supplied, contradictions are handled explicitly, and the final structure teaches the topic without hiding uncertainty.
+- Evidence: source URLs or files, fetched content, notes from digestion, outline decisions, and self-review against the requested output.
+- Output: research notes, outline, publish-ready draft, or canonical reference, matching the chosen mode.
 
 **Boundary**: single URL that only needs fetching belongs in `/read`. A single URL that needs summary or analysis can use `/read` as the fetch step, but the final answer should satisfy the user's requested summary or analysis. `/learn` is for multi-source research that produces a new structured output.
 
@@ -52,8 +61,8 @@ Gather primary sources only: papers that introduced key ideas, official lab/prod
 Three ordered steps per source -- no shortcuts, no merging:
 
 1. **Discover** -- use an installed search plugin (e.g., PipeLLM) to map the landscape, then deep-search the 2-3 most promising sub-topics. No plugin: use the environment's native web search. Output is a URL list; do not fetch content here.
-2. **Fetch** -- every URL goes through `/read`. `/read` already owns the proxy cascade, paywall detection, and platform routing (WeChat, Feishu, PDF, GitHub). `WebFetch` and raw `curl` silently fail on JS-heavy or paywalled sites and skip all of that. If `/read` is missing (Pre-check warned), fall back to native fetch and accept reduced coverage.
-3. **File** -- `/read` saves to `~/Downloads/{title}.md` when called from `/learn`. Move each file into a sub-topic directory under the research project after the fetch returns. Move, don't refetch.
+2. **Fetch** -- every URL goes through `/read` when available. `/read` owns the proxy cascade, paywall detection, and platform routing (WeChat, Feishu, PDF, GitHub). Native fetch tools and raw `curl` silently fail on JS-heavy or paywalled sites and skip all of that. If `/read` is missing (Pre-check warned), fall back to native fetch and accept reduced coverage.
+3. **File** -- tell `/read` the research project's source directory when one exists. If no directory was specified, let `/read` use a per-session temp directory and return the saved path. Move or index saved files into sub-topic directories after fetch returns. Move, don't refetch.
 
 Target: 5-10 sources for a blog post, 15-20 for a deep technical survey.
 
@@ -74,9 +83,12 @@ When two sources contradict on a factual claim, note both positions and the evid
 
 When the input is a recent conversation, project review, scorecard, or diagnostic report, treat it as raw material:
 
+- Prefer already-distilled summaries, memory entries, and review outputs first; open raw transcripts only to verify a disputed detail or recover the exact source of a repeated pattern.
+- Build a candidate matrix before editing durable guidance: source/project, repeated failure, transferable rule, target layer, evidence count, and redaction risk. Promote only candidates with cross-source support or a repeated failure in the same project family.
 - Extract repeated workflow failures, invariants, and verifier surfaces.
 - Drop dated line numbers, current-score framing, private paths, one-machine setup, and repo-specific commands unless the output is explicitly for that same repo.
 - Map each durable lesson to its target layer: project docs, shared rules, skill references, or deterministic scripts.
+- Prefer references or existing skill sections for adaptive workflow guidance; use scripts only for deterministic checks that can fail reliably without project-specific context.
 - Keep evidence snippets only as notes for yourself; do not paste raw conversation history into the final artifact.
 
 ## Phase 3: Outline
@@ -121,7 +133,7 @@ When it reads clean from start to finish, the draft is ready for the user to pub
 | What happened | Rule |
 |---------------|------|
 | Collected 30 secondary explainers instead of primary sources | Phase 1 targets papers, official blogs, and repos by builders. Summaries are not sources. |
-| Used `WebFetch` or `curl` on URLs while `/read` was installed | Phase 1 fetch is not optional. `/read` owns the proxy cascade, paywall detection, and platform routing. Bypassing it silently loses coverage on paywalled, JS-heavy, or Chinese-platform pages. |
+| Used native fetch tools or `curl` on URLs while `/read` was installed | Phase 1 fetch is not optional. `/read` owns the proxy cascade, paywall detection, and platform routing. Bypassing it silently loses coverage on paywalled, JS-heavy, or Chinese-platform pages. |
 | Treated a convincing explainer as ground truth | Ask: does this appear in at least two different contexts from the same source? |
 | Phase 2 wrote summaries instead of teaching the concept | Digest means building the mental model. Summarizing is not digesting. |
 | AI offered to upload the article to a blog or social platform after the user said it was ready | Stop at confirmation. Publishing is the user's action, not yours. |

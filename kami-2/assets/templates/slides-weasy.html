@@ -257,12 +257,23 @@
     color: var(--stone);
     letter-spacing: 0.3pt;
   }
+  /* 品牌 logo 槽(可选,来自 brand profile);默认无 logo,样式仅在取消注释后生效。 */
+  .cover .brand-logo {
+    height: 72px;
+    width: auto;
+    max-width: 220px;
+    object-fit: contain;
+    margin-bottom: 24pt;
+  }
 </style>
 </head>
 <body>
 
 <!-- 封面 -->
 <section class="slide cover">
+  <!-- 品牌 logo 槽(可选,来自 brand profile 的 logo 字段)。无 logo 时保持注释,勿插破图。
+       有 logo 时取消注释,把 src 换成已展开的本地绝对路径:
+  <img class="brand-logo" src="/absolute/path/to/logo.svg" alt=""> -->
   <h1>{{标题}}</h1>
   <div class="sub">{{副标题}}</div>
   <div class="meta">{{作者}} · {{日期}}</div>

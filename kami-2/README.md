@@ -12,30 +12,61 @@
 
 Kami (紙, かみ) means paper in Japanese: the surface where a finished idea lands. AI can produce documents better than most humans do manually. The missing piece is not capability but constraint: without a design system, every session drifts into generic gray and inconsistent layouts.
 
-Kami fills that gap: one constraint language, ten templates, simple enough for agents to run reliably, strict enough that every output is something you actually want to ship. English and Chinese are first-class; Japanese works via a best-effort CJK path with visual QA before delivery.
+Kami fills that gap: one constraint language, nine templates, simple enough for agents to run reliably, strict enough that every output is something you actually want to ship.
 
 Part of a trilogy: [Kaku](https://github.com/tw93/Kaku) (書く) writes code, [Waza](https://github.com/tw93/Waza) (技) drills habits, [Kami](https://github.com/tw93/Kami) (紙) delivers documents.
 
 ## See it
 
+Nine real PDFs across templates and languages. Click any preview to open it.
+
 <table>
 <tr>
-  <td align="center" width="25%">
+  <td align="center" width="33%">
+    <a href="assets/demos/demo-musk-resume.pdf"><img src="assets/demos/demo-musk-resume.png" alt="Founder resume"></a>
+    <br><b>Resume</b> · English
+    <br><sub>Founder resume, 2 pages</sub>
+  </td>
+  <td align="center" width="33%">
+    <a href="assets/demos/demo-resume-ko.pdf"><img src="assets/demos/demo-resume-ko.png" alt="Korean resume"></a>
+    <br><b>Resume</b> · 한국어
+    <br><sub>개발자 이력서, 2페이지</sub>
+  </td>
+  <td align="center" width="33%">
     <a href="assets/demos/demo-tesla.pdf"><img src="assets/demos/demo-tesla.png" alt="Tesla equity report"></a>
     <br><b>Equity Report</b> · 中文
     <br><sub>Tesla Q1 2026 财报点评</sub>
   </td>
-  <td align="center" width="25%">
+</tr>
+<tr>
+  <td align="center" width="33%">
     <a href="assets/demos/demo-agent-slides.pdf"><img src="assets/demos/demo-agent-slides.png" alt="Agent keynote slides" /></a>
     <br><b>Slides</b> · English
     <br><sub>Agent keynote, 6 slides</sub>
   </td>
-  <td align="center" width="25%">
-    <a href="assets/demos/demo-musk-resume.pdf"><img src="assets/demos/demo-musk-resume.png" alt="Elon Musk resume"></a>
-    <br><b>Resume</b> · English
-    <br><sub>Founder CV, 2 pages</sub>
+  <td align="center" width="33%">
+    <a href="assets/demos/demo-mole.pdf"><img src="assets/demos/demo-mole.png" alt="Mole product brief"></a>
+    <br><b>One-Pager</b> · English
+    <br><sub>Mole product brief, 1 page</sub>
   </td>
-  <td align="center" width="25%">
+  <td align="center" width="33%">
+    <a href="assets/demos/demo-waza.pdf"><img src="assets/demos/demo-waza.png" alt="Waza skills one-pager"></a>
+    <br><b>One-Pager</b> · English
+    <br><sub>Waza skills intro, 1 page</sub>
+  </td>
+</tr>
+<tr>
+  <td align="center" width="33%">
+    <a href="assets/demos/demo-letter.pdf"><img src="assets/demos/demo-letter.png" alt="Recommendation letter"></a>
+    <br><b>Letter</b> · 中文
+    <br><sub>推荐信, 1 页</sub>
+  </td>
+  <td align="center" width="33%">
+    <a href="assets/demos/demo-changelog.pdf"><img src="assets/demos/demo-changelog.png" alt="Mole release notes"></a>
+    <br><b>Changelog</b> · English
+    <br><sub>Mole v1.7.1 release notes</sub>
+  </td>
+  <td align="center" width="33%">
     <a href="assets/demos/demo-kaku.pdf"><img src="assets/demos/demo-kaku.png" alt="Kaku portfolio"></a>
     <br><b>Portfolio</b> · 日本語
     <br><sub>Kaku ターミナル作品集 · 7 ページ</sub>
@@ -45,22 +76,22 @@ Part of a trilogy: [Kaku](https://github.com/tw93/Kaku) (書く) writes code, [W
 
 ## Landing Pages
 
-The landing-page template in action: three products, one constraint set.
+The landing-page template in action: three products, one constraint set. Five `.example` companions (vercel, sitemap, robots, llms, llms-full) ship alongside for multilingual deployment.
 
 <table>
 <tr>
   <td align="center" width="33%">
-    <a href="https://kami.tw93.fun"><img src="assets/images/1.png" alt="Kami landing page"></a>
+    <a href="https://kami.tw93.fun"><img src="assets/showcase/kami-landing.png" alt="Kami landing page"></a>
     <br><b>Kami</b> · English
     <br><sub>Design system homepage</sub>
   </td>
   <td align="center" width="33%">
-    <a href="https://luo.tw93.fun"><img src="assets/images/2.png" alt="Luo landing page"></a>
+    <a href="https://luo.tw93.fun"><img src="assets/showcase/luo-landing.png" alt="Luo landing page"></a>
     <br><b>Luo</b> · 中文
     <br><sub>CJK reading font specimen</sub>
   </td>
   <td align="center" width="33%">
-    <a href="https://mole.fit"><img src="assets/images/3.png" alt="Mole landing page"></a>
+    <a href="https://mole.fit"><img src="assets/showcase/mole-landing.png" alt="Mole landing page"></a>
     <br><b>Mole</b> · English
     <br><sub>macOS system utility</sub>
   </td>
@@ -92,15 +123,24 @@ npx skills add tw93/kami -a '*' -g -y
 
 Download [kami.zip](https://github.com/tw93/kami/releases/latest/download/kami.zip), open Customize > Skills > "+" > Create skill, and upload the ZIP directly (no need to unzip).
 
-The ZIP is lightweight: Chinese fonts load from local checkout first, then jsDelivr CDN. If rendering is off, Claude downloads them on the next run. To update: download the same URL, click "..." on the skill card, choose Replace, upload.
+The ZIP is lightweight: large CJK fonts are excluded from the skill package. In a repo checkout they load from local font files first, then jsDelivr CDN; in an installed skill, `scripts/ensure-fonts.sh` recovers missing Chinese or Korean fonts into the user font directory.
 
-The skill auto-triggers from natural requests, no slash command needed. Optimized for English and Chinese; Japanese supported via a best-effort CJK path with visual QA before delivery.
+**Update**
+
+```bash
+npx skills update kami -g -y
+```
+
+Marketplace installs use `claude plugin update kami`. Claude Desktop: download the latest [kami.zip](https://github.com/tw93/kami/releases/latest/download/kami.zip), click "..." on the skill card, choose Replace, upload. Kami also runs a quiet version check at most once a day and tells you in chat when a newer version is out; it only reads a public version file, sends no data, and is skipped when offline.
+
+The skill auto-triggers from natural requests, no slash command needed. Optimized for English and Chinese; Japanese and Korean are supported via best-effort CJK paths with visual QA before delivery.
 
 Example prompts by language:
 
-- English: `make a one-pager for my startup` / `turn this research into a long doc` / `write a formal letter` / `make a portfolio of my projects` / `build me a resume` / `design a slide deck for my talk` / `build a landing page for my app`
-- 中文: `帮我做一份一页纸` / `帮我排版一份长文档` / `帮我写一封正式信件` / `帮我做一份作品集` / `帮我做一份简历` / `帮我做一套演讲幻灯片` / `帮我做一个产品落地页`
-- 日本語: `スタートアップ向けの一枚資料を作って` / `この調査を長文レポートに整えて` / `正式な依頼文を作って` / `プロジェクト作品集を作って` / `履歴書を作って` / `登壇用スライドを作って` / `アプリのランディングページを作って`
+- English: `make a one-pager for my startup` / `turn this research into a long doc` / `write a formal letter` / `make a portfolio of my projects` / `build me a resume` / `design a slide deck for my talk` / `make this talk as a Marp deck` / `build a landing page for my app`
+- 中文: `帮我做一份一页纸` / `帮我排版一份长文档` / `帮我写一封正式信件` / `帮我做一份作品集` / `帮我做一份简历` / `帮我做一套演讲幻灯片` / `帮我做一份 Markdown 风格的演示稿` / `帮我做一个产品落地页`
+- 日本語: `スタートアップ向けの一枚資料を作って` / `この調査を長文レポートに整えて` / `正式な依頼文を作って` / `プロジェクト作品集を作って` / `履歴書を作って` / `登壇用スライドを作って` / `Marp で登壇スライドを作って` / `アプリのランディングページを作って`
+- 한국어: `스타트업 원페이저를 만들어줘` / `이 리서치를 장문 문서로 정리해줘` / `정식 레터를 작성해줘` / `프로젝트 포트폴리오를 만들어줘` / `이력서를 만들어줘` / `발표용 슬라이드를 만들어줘` / `Marp 슬라이드로 만들어줘` / `앱 랜딩 페이지를 만들어줘`
 
 **Optional: brand profile**
 
@@ -112,7 +152,7 @@ The file has YAML frontmatter (structured fields: name, role, email, website, Gi
 
 Warm parchment canvas, ink blue as the sole accent, serif carries hierarchy, no hard shadows or flashy palettes. Not a UI framework; a constraint system for printed matter. Documents should read as composed pages, not dashboards.
 
-Ten template types: One-Pager, Long Doc, Letter, Portfolio, Resume, Slides, Equity Report, Changelog, and Landing Page in EN and CN. Fourteen inline SVG diagram types included. Code blocks support Pygments-based syntax highlighting when `Pygments` is installed; without it, PDFs still render and code stays monochrome. Kami picks the right variant based on the language you write in.
+Nine template types: One-Pager, Long Doc, Letter, Portfolio, Resume, Slides, Equity Report, Changelog, and Landing Page in EN, CN, and KO. Fourteen inline SVG diagram types included. Slides ship in three rendering paths: WeasyPrint HTML to PDF (default), python-pptx (editable PPTX, on request), and a Marp variant in `assets/templates/marp/` for Markdown-first decks. Code blocks support Pygments-based syntax highlighting when `Pygments` is installed; without it, PDFs still render and code stays monochrome. Kami picks the right variant based on the language you write in.
 
 | Element | Rule |
 |---|---|
@@ -124,7 +164,7 @@ Ten template types: One-Pager, Long Doc, Letter, Portfolio, Resume, Slides, Equi
 | Shadows | Ring or whisper only, no hard drop shadows |
 | Tags | Solid hex backgrounds only. `rgba()` triggers a WeasyPrint double-rectangle bug |
 
-**Fonts**: Each language uses a single serif font for the entire page. Chinese: TsangerJinKai02. Japanese: YuMincho. English: Charter. TsangerJinKai is free for personal use, commercial use requires a license from [tsanger.cn](https://tsanger.cn). All other fonts are system-bundled.
+**Fonts**: Each language uses a single serif font for the entire page. Chinese: TsangerJinKai02. Japanese: YuMincho. Korean: Source Han Serif K. English: Charter. See [License](#license) for font terms.
 
 Full spec: [design.md](references/design.md). Cheatsheet: [CHEATSHEET.md](CHEATSHEET.md).
 
@@ -164,14 +204,19 @@ Later I needed to present "The Agent You Don't Know: Principles, Architecture an
 
 ## Support
 
+- The most direct way to support me is getting [Mole for Mac](https://mole.fit), my paid Mac cleanup app.
 - If kami helped you, [share it](https://twitter.com/intent/tweet?url=https://github.com/tw93/kami&text=Kami%20-%20A%20quiet%20design%20system%20for%20professional%20documents.) with friends or give it a star.
 - Got ideas or bugs? Open an issue or PR.
 - I have two cats, TangYuan and Coke. If you think kami delights your life, you can feed them <a href="https://cats.tw93.fun?name=Kami" target="_blank">canned food 🥩</a>.
 
+<details>
+<summary>These lovely people already did 🐱</summary>
+<br/>
 <a href="https://cats.tw93.fun?name=Kami"><img src="https://cdn.jsdelivr.net/gh/tw93/sponsors@main/assets/sponsors.svg" width="1000" loading="lazy" /></a>
+</details>
 
 ## License
 
 MIT License for kami code and templates. Feel free to use and contribute.
 
-**Fonts**: TsangerJinKai02 (Chinese) is free for personal use only; commercial use requires a license from [tsanger.cn](https://tsanger.cn). Charter (English), YuMincho (Japanese), and CJK fallbacks are system-bundled or open-licensed.
+**Fonts**: TsangerJinKai02 (Chinese) is free for personal use only; commercial use requires a license from [tsanger.cn](https://tsanger.cn). Charter (English), YuMincho (Japanese), Source Han Serif K (Korean, OFL), and CJK fallbacks are system-bundled or open-licensed.

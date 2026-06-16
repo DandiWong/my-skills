@@ -20,10 +20,14 @@ Use this template to compress repository context before running Waza `/check`. T
 - Protected files and directories.
 - Generated or bundled artifacts that must stay in sync with source changes.
 - Packaging source of truth: whether archives are built from `git ls-files`, explicit allowlists, generated manifests, or source directories.
+- Delivery surfaces: whether generated outputs are tracked, ignored, external release assets, registry uploads, appcasts, installer metadata, checksums, or site/download copy; how they are regenerated, inspected, staged, or uploaded.
+- Distribution lanes: preview, beta, nightly, stable, App Store, or registry channels, and which generated artifacts belong to each lane.
+- CLI command surfaces: entrypoints, subcommands, flags, help/version behavior, exit codes, stdout/stderr contract, TTY and non-interactive paths, config/env precedence, and installed-runtime checks.
 - Runtime dependencies introduced by the diff: Python packages, CLIs, network services, package managers, or platform tools that are not already declared in CI/docs.
 - Domain-specific safety rules.
 - Release artifacts that must exist.
 - GitHub release reactions or other public release follow-through expected by the project.
+- Release-asset verification method: download, archive entry comparison, checksum manifest, package metadata readback, appcast readback, or registry query.
 - Public issue or PR reply conventions.
 - Known CI or test flakes documented by the project and how to distinguish them from real failures.
 - Release, publish, push, or issue-closure prerequisites documented by the project.
@@ -34,6 +38,7 @@ Use this template to compress repository context before running Waza `/check`. T
 - Maintainer-only machine paths.
 - One-off personal preferences that do not affect project behavior.
 - One-off review reports, scorecards, or diagnostic snapshots copied as guidance instead of distilled into stable project rules.
+- Raw memory, chat excerpts, screenshots, private support details, local paths, project-specific commands, issue/PR numbers, release tags, or commit hashes from another project.
 - Full copies of Waza `/check` sections.
 
 ## Recommended Context Shape
@@ -45,10 +50,19 @@ Use this template to compress repository context before running Waza `/check`. T
 - Fast check: `<command>`
 - Full verification: `<command>`
 
+## CLI Command Surface
+
+- Entrypoints: `<command or bin>`.
+- Command contract: help/version, subcommands, flags, exit codes, stdout/stderr, JSON/schema output.
+- Runtime shape: TTY vs non-interactive behavior, env/config precedence, completion/manpage or shell integration.
+- Install/run proof: built package, temp prefix, PATH shim, shebang/executable bit, or package-manager path checked with `<command>`.
+- Mutating commands: dry-run/confirmation, operation log, rollback/retry behavior, signal/partial-failure handling.
+
 ## Project Hard Stops
 
 - Do not modify `<protected path>` unless explicitly requested.
 - If `<artifact>` is generated from `<source>`, verify it was regenerated.
+- If `<artifact>` is ignored by git but required for release, verify the regeneration and force-stage, upload, or registry publish path named by the project.
 - If `<package script>` builds from tracked files or an allowlist, verify newly introduced helpers, references, templates, and scripts are included in `<archive>`.
 - If an installer fetches remote content, verify the default ref is pinned to a release tag or checksum-protected; floating `main` must be an explicit override.
 - If a helper introduces a non-stdlib package or external CLI, verify CI installs it or the helper fails with a clear setup path.
@@ -60,17 +74,15 @@ Use this template to compress repository context before running Waza `/check`. T
 
 ## Public Replies
 
-- Draft replies in the same language as the thread.
-- Do not post comments, close issues, or merge PRs without maintainer approval.
-- For accepted PRs, prefer updating the contributor branch and merging the PR; close without merge only when the direction is rejected, unsafe, out of scope, or the branch cannot be updated and a maintainer commit is explicitly needed.
-- Default reply shape: `@<user>` + thanks, brief reason/action, then update command, release/version, or next step.
-- Keep shipped-fix replies to 1-2 natural sentences unless the project explicitly uses a longer template.
+See `public-reply.md` for the full reply template (language match, `@user` + thanks, factual paragraphs, ship-state line, closure criteria). It is the single source; do not restate the rules here.
 
 ## Release Follow-through
 
 - Version fields to check: `<manifest>`, `<app config>`, `<lockfile>`.
 - Generated artifacts to check: `<artifact>` from `<source>`.
+- Distribution lane: `<preview/beta/nightly/stable/etc.>` and which public surfaces it is allowed to touch.
 - Dry-run command before publishing: `<command>`.
+- Remote asset proof: `<download/readback command>` that checks content, manifest, digest, appcast, or registry state.
 - GitHub release reactions to add after asset verification: `<+1/laugh/heart/hooray/rocket/eyes or none>`.
 - Public state to re-read after publishing or closing: `<registry/release/issue URL or command>`.
 ```
@@ -87,10 +99,11 @@ Fill this before claiming a change is release-ready. Use "n/a" only when the pro
 | Worktree state | Dirty, staged, and untracked files accounted for |
 | Remote state | `origin/main` or release branch sync checked |
 | Version fields | Manifest, app config, changelog, appcast, and lockfile versions aligned |
+| Distribution lane | Preview, beta, nightly, stable, registry, or app-store lane named, with unrelated lanes left untouched |
 | Runtime dependencies | Newly introduced Python packages, CLIs, package managers, and network tools declared and available in CI |
-| Generated artifacts | Bundled/minified/archive outputs regenerated or proven not needed |
+| Generated artifacts | Tracked archives, ignored dist outputs, bundled/minified files, appcasts, installer metadata, checksums, and site/download copy regenerated or proven not needed |
 | Package/archive contents | Built package inspected for required files, newly introduced helpers/references, and missing extras |
-| Release assets | GitHub release, appcast, download archive, checksum, or installer assets verified |
+| Release assets | GitHub release, appcast, download archive, checksum, or installer assets downloaded or read back and verified beyond page text or file size |
 | Registry/appcast | npm/crates/Homebrew/appcast/App Store or equivalent state re-read after publish |
 | CI status | Latest required checks passed or blocker named |
 | Issue/PR state | Target issue or PR re-read before commenting, closing, merging, or saying shipped |
