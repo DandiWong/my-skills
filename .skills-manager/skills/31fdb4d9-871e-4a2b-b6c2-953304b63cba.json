@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "31fdb4d9-871e-4a2b-b6c2-953304b63cba",
+  "path": "dingtalk-sheet",
+  "path_key": "dingtalk-sheet",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "https://github.com/DingTalk-Real-AI/dingtalk-workspace-cli",
+    "subpath": "skills/multi/dingtalk-sheet",
+    "branch": null
+  }
+}

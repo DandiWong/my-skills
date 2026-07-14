@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "4db673f7-8f10-40bd-a329-5359cb3f24ca",
+  "path": "dingtalk-calendar",
+  "path_key": "dingtalk-calendar",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "https://github.com/DingTalk-Real-AI/dingtalk-workspace-cli",
+    "subpath": "skills/multi/dingtalk-calendar",
+    "branch": null
+  }
+}

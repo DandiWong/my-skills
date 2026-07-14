@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "0f3c23dc-e6f2-4592-8935-b9d3b89109ab",
+  "path": "dingtalk-attendance",
+  "path_key": "dingtalk-attendance",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "https://github.com/DingTalk-Real-AI/dingtalk-workspace-cli",
+    "subpath": "skills/multi/dingtalk-attendance",
+    "branch": null
+  }
+}

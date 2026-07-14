@@ -1,16 +1,19 @@
 #!/usr/bin/env node
-// Phase 1 — PR ingest (deterministic; no subagent; NO network).
+// Step 1 — PR ingest (deterministic; no subagent; NO network).
 //
 // Pure transform. The orchestrator (SKILL.md Step 1) runs `gh` itself so auth /
 // not-found / private-repo errors surface with gh's own stderr; THIS script never
 // touches the network. It only folds the two gh artifacts into the synthetic
-// capture package the shared backend (build-design / prep) expects — exactly the
-// shape faceless-explainer's scaffold writes, so the whole downstream runs unchanged.
+// capture package the shared Gen-B backend (build-frame / captions / assemble-index)
+// expects — the same shape faceless-explainer's Step 1 writes by hand, so the
+// whole downstream runs unchanged. `capture/extracted/` is kept (no website was
+// captured — the PR is ingested into the same folder the engine reads by default).
 //
 // Reads:
 //   --pr-json <path>   gh pr view --json number,title,body,author,url,baseRefName,
 //                      headRefName,commits,files,additions,deletions,changedFiles,labels,
 //                      reviews,latestReviews,comments,assignees,reviewDecision,mergedBy
+//                      + fetch-pr.mjs's best-effort shipped_version / version_source
 //   --diff <path>      gh pr diff (raw unified diff)  [optional — brief still builds without it]
 // Writes (under --out-dir, default ./capture/extracted):
 //   tokens.json        synthetic design tokens (colors:[] → claude native palette)
@@ -21,7 +24,7 @@
 //                      commenters / assignees — the PR `author` is only the opener, so
 //                      commit authors from commits[].authors[] are tracked separately),
 //                      bot-filtered + deduped, each with a GitHub avatar URL + intended
-//                      public/avatars/<login>.png path. The avatars themselves are
+//                      assets/<login>.png path. The avatars themselves are
 //                      downloaded by the orchestrator (fetch-people-avatars.mjs) — THIS
 //                      script stays offline. people.json + the avatars are the ONE place
 //                      the faceless default is relaxed: an optional credits/shipped-by close.
@@ -243,13 +246,19 @@ const people = [...peopleMap.values()]
     // Unauthenticated avatar endpoint — redirects to the user's avatar; the
     // orchestrator's fetch-people-avatars.mjs downloads it here.
     avatarUrl: `https://github.com/${encodeURIComponent(p.login)}.png?size=200`,
-    avatarFile: `public/avatars/${p.login}.png`,
+    avatarFile: `assets/${p.login}.png`,
     avatarFetched: false, // set true by fetch-people-avatars.mjs once downloaded
   }))
   .sort((a, b) => primaryRoleRank(a.roles) - primaryRoleRank(b.roles));
 
 const reviewDecision = pr.reviewDecision || null;
 const mergedByLogin = pr.mergedBy?.login || null;
+
+// Best-effort shipping version stamped by fetch-pr.mjs (MERGED PRs only). Surfaced
+// in the brief so the end card / cta cites a real version instead of inventing one;
+// null means "no version known — the close names the repo URL only" (see story-design.md).
+const shippedVersion = typeof pr.shipped_version === "string" ? pr.shipped_version : null;
+const versionSource = typeof pr.version_source === "string" ? pr.version_source : null;
 
 // ---------- clean body ----------
 function cleanBody(raw) {
@@ -404,10 +413,12 @@ lines.push(
 );
 if (labels.length) lines.push(`Labels: ${labels.join(", ")}`);
 if (url) lines.push(`URL: ${url}`);
+if (shippedVersion)
+  lines.push(`Shipped in: ${shippedVersion}${versionSource ? ` (${versionSource})` : ""}`);
 lines.push("");
 
 // People & reviews — human context for an optional credits / shipped-by close.
-// Avatars land in public/avatars/<login>.png (downloaded by the orchestrator).
+// Avatars land in assets/<login>.png (downloaded by the orchestrator).
 if (people.length) {
   lines.push("## People & reviews");
   const authorPerson = people.find((p) => p.roles.includes("author"));
@@ -439,9 +450,7 @@ if (people.length) {
     lines.push(`Commenters: ${commentersOnly.map((p) => `@${p.login}`).join(", ")}`);
   if (reviewDecision) lines.push(`Review decision: ${reviewDecision}`);
   if (mergedByLogin) lines.push(`Merged by: @${mergedByLogin}`);
-  lines.push(
-    `Avatars: public/avatars/<login>.png (${people.length} contributor(s) — see people.json)`,
-  );
+  lines.push(`Avatars: assets/<login>.png (${people.length} contributor(s) — see people.json)`);
   if (botsFiltered.size) lines.push(`(bots filtered out: ${[...botsFiltered].join(", ")})`);
   lines.push("");
 }
@@ -505,11 +514,6 @@ const tokens = {
   description: oneLiner,
   colors: [],
   fonts: [],
-  headings: [],
-  sections: [],
-  ctas: [],
-  svgs: [],
-  cssVariables: {},
 };
 
 // ---------- assemble people.json ----------

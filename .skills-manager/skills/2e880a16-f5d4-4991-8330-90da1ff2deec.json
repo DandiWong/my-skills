@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "2e880a16-f5d4-4991-8330-90da1ff2deec",
+  "path": "dingtalk-mail",
+  "path_key": "dingtalk-mail",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "https://github.com/DingTalk-Real-AI/dingtalk-workspace-cli",
+    "subpath": "skills/multi/dingtalk-mail",
+    "branch": null
+  }
+}

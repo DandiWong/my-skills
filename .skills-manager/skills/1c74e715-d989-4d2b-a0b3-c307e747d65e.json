@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "1c74e715-d989-4d2b-a0b3-c307e747d65e",
+  "path": "dingtalk-contact",
+  "path_key": "dingtalk-contact",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "https://github.com/DingTalk-Real-AI/dingtalk-workspace-cli",
+    "subpath": "skills/multi/dingtalk-contact",
+    "branch": null
+  }
+}

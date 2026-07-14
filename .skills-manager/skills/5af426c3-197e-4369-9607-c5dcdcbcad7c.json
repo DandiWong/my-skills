@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "5af426c3-197e-4369-9607-c5dcdcbcad7c",
+  "path": "dingtalk-report",
+  "path_key": "dingtalk-report",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "https://github.com/DingTalk-Real-AI/dingtalk-workspace-cli",
+    "subpath": "skills/multi/dingtalk-report",
+    "branch": null
+  }
+}

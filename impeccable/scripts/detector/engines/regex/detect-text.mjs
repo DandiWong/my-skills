@@ -1,6 +1,9 @@
-import { GENERIC_FONTS } from '../../shared/constants.mjs';
+import { GENERIC_FONTS, OVERUSED_FONTS } from '../../shared/constants.mjs';
+import { isNeutralColor } from '../../shared/color.mjs';
+import { extractGoogleFontFamilies } from '../../shared/fonts.mjs';
 import { checkSourceDesignSystem } from '../../design-system.mjs';
 import { isFullPage } from '../../shared/page.mjs';
+import { applyInlineIgnores } from '../../shared/inline-ignores.mjs';
 import { finding } from '../../findings.mjs';
 import { filterByProviders } from '../../registry/antipatterns.mjs';
 import { profileFindings, profileStep } from '../../profile/profiler.mjs';
@@ -36,11 +39,16 @@ function shouldRunPageAnalyzers(content, filePath) {
   return !ext || PAGE_ANALYZER_EXTS.has(ext);
 }
 
+function firstOverusedGoogleFont(text) {
+  return extractGoogleFontFamilies(text).find(f => OVERUSED_FONTS.has(f)) || '';
+}
+
 function isNeutralBorderColor(str) {
-  const m = str.match(/solid\s+(#[0-9a-f]{3,8}|rgba?\([^)]+\)|\w+)/i);
+  const m = str.match(/solid\s+((?:rgba?|hsla?|oklch|oklab|lab|lch|hwb|color)\([^)]*\)|#[0-9a-f]{3,8}\b|[a-z]+)/i);
   if (!m) return false;
   const c = m[1].toLowerCase();
   if (['gray', 'grey', 'silver', 'white', 'black', 'transparent', 'currentcolor'].includes(c)) return true;
+  if (/^(?:rgba?|hsla?|oklch|oklab|lab|lch|hwb)\(/i.test(c)) return isNeutralColor(c);
   const hex = c.match(/^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/);
   if (hex) {
     const [r, g, b] = [parseInt(hex[1], 16), parseInt(hex[2], 16), parseInt(hex[3], 16)];
@@ -57,10 +65,10 @@ function isNeutralBorderColor(str) {
 const REGEX_MATCHERS = [
   // --- Side-tab ---
   { id: 'side-tab', regex: /\bborder-[lrse]-(\d+)\b/g,
-    test: (m, line) => { const n = +m[1]; return hasRounded(line) ? n >= 1 : n >= 4; },
+    test: (m, line) => { const n = +m[1]; return hasRounded(line) ? n >= 2 : n >= 4; },
     fmt: (m) => m[0] },
   { id: 'side-tab', regex: /border-(?:left|right)\s*:\s*(\d+)px\s+solid[^;]*/gi,
-    test: (m, line) => { if (isSafeElement(line)) return false; if (isNeutralBorderColor(m[0])) return false; const n = +m[1]; return hasBorderRadius(line) ? n >= 1 : n >= 3; },
+    test: (m, line) => { if (isSafeElement(line)) return false; if (isNeutralBorderColor(m[0])) return false; const n = +m[1]; return hasBorderRadius(line) ? n >= 2 : n >= 3; },
     fmt: (m) => m[0].replace(/\s*;?\s*$/, '') },
   { id: 'side-tab', regex: /border-(?:left|right)-width\s*:\s*(\d+)px/gi,
     test: (m, line) => !isSafeElement(line) && +m[1] >= 3,
@@ -85,9 +93,12 @@ const REGEX_MATCHERS = [
   { id: 'overused-font', regex: /font-family\s*:\s*['"]?(Inter|Roboto|Open Sans|Lato|Montserrat|Arial|Helvetica|Fraunces|Geist Sans|Geist Mono|Geist|Mona Sans|Plus Jakarta Sans|Space Grotesk|Recoleta|Instrument Sans|Instrument Serif)\b/gi,
     test: () => true,
     fmt: (m) => m[0] },
-  { id: 'overused-font', regex: /fonts\.googleapis\.com\/css2?\?family=(Inter|Roboto|Open\+Sans|Lato|Montserrat|Fraunces|Plus\+Jakarta\+Sans|Space\+Grotesk|Instrument\+Sans|Instrument\+Serif|Mona\+Sans|Geist)\b/gi,
-    test: () => true,
-    fmt: (m) => `Google Fonts: ${m[1].replace(/\+/g, ' ')}` },
+  { id: 'overused-font', regex: /fonts\.googleapis\.com\/css2?\?[^"'\s)<>]*/gi,
+    test: (m) => {
+      m.overusedGoogleFont = firstOverusedGoogleFont(m[0]);
+      return Boolean(m.overusedGoogleFont);
+    },
+    fmt: (m) => `Google Fonts: ${m.overusedGoogleFont || firstOverusedGoogleFont(m[0])}` },
   // --- Gradient text ---
   { id: 'gradient-text', regex: /background-clip\s*:\s*text|-webkit-background-clip\s*:\s*text/gi,
     test: (m, line) => /gradient/i.test(line),
@@ -167,10 +178,7 @@ const REGEX_ANALYZERS = [
         if (f && !GENERIC_FONTS.has(f)) fonts.add(f);
       }
     }
-    const gfRe = /fonts\.googleapis\.com\/css2?\?family=([^&"'\s]+)/gi;
-    while ((m = gfRe.exec(content)) !== null) {
-      for (const f of m[1].split('|').map(f => f.split(':')[0].replace(/\+/g, ' ').toLowerCase())) fonts.add(f);
-    }
+    for (const f of extractGoogleFontFamilies(content)) fonts.add(f);
     if (fonts.size !== 1 || content.split('\n').length < 20) return [];
     const name = [...fonts][0];
     const lines = content.split('\n');
@@ -547,7 +555,10 @@ function detectText(content, filePath, options = {}) {
     }
   }
 
-  return filterByProviders(deduped, options?.providers);
+  const byProvider = filterByProviders(deduped, options?.providers);
+  // Inline `impeccable-disable*` waivers travel with the file; honor them unless
+  // explicitly bypassed (`--no-config` / `--no-inline-ignores`).
+  return options?.inlineIgnores === false ? byProvider : applyInlineIgnores(byProvider, content);
 }
 
 export {

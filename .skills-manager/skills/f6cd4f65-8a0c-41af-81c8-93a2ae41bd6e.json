@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "f6cd4f65-8a0c-41af-81c8-93a2ae41bd6e",
+  "path": "dingtalk-aitable",
+  "path_key": "dingtalk-aitable",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "https://github.com/DingTalk-Real-AI/dingtalk-workspace-cli",
+    "subpath": "skills/multi/dingtalk-aitable",
+    "branch": null
+  }
+}

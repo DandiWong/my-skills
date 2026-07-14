@@ -57,7 +57,8 @@
   const Z = { highlight: 100001, bar: 100005, picker: 100007, toast: 100010 };
   const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)'; // ease-out-quint
   const PREFIX = 'impeccable-live';
-  const PICK_CURSOR_CLASS = PREFIX + '-pick-cursor';
+  const IMPECCABLE_COMMAND = (window.__IMPECCABLE_COMMAND_PREFIX__ || '/') + 'impeccable';
+  const PICK_CURSOR_STYLE_ID = PREFIX + '-pick-cursor-style';
   const MANUAL_APPLY_STATE_TTL_MS = 15 * 60 * 1000;
   const sessionState = window.__IMPECCABLE_LIVE_SESSION__?.createLiveBrowserSessionState({
     prefix: PREFIX,
@@ -152,6 +153,8 @@
   let scrollLockTargetY = null;
   let scrollLockRaf = null;
   let scrollLockAbort = null;
+  const SCROLL_ANCHOR_LOCK_ID = 'impeccable-scroll-anchor-lock';
+  const VARIANT_STATE_STYLE_ID = 'impeccable-variant-state';
 
   // Dedicated key for scroll position - SEPARATE from LS_KEY so that
   // saveSession's state updates don't clobber a carefully-captured scrollY.
@@ -1915,45 +1918,45 @@
     syncPageInteractionCursor();
   }
 
-  let pageInteractionCursorActive = false;
-
-  function ensurePickCursorStyle() {
-    if (document.getElementById(PREFIX + '-pick-cursor-style')) return;
-    const style = document.createElement('style');
-    style.id = PREFIX + '-pick-cursor-style';
+  /**
+   * Drive the page-level pick / insert cursor through the textContent of one
+   * injected <style>, never by mutating <html> (className or inline style).
+   * Frameworks that server-render the <html>/<body> roots (Next.js App Router)
+   * report a React 19 hydration mismatch when the client adds an attribute the
+   * server HTML never emitted, so a `class`/inline `style` toggled on
+   * `document.documentElement` trips "a tree hydrated but some attributes ...
+   * didn't match" on the next Fast-Refresh re-render. Keying the cursor off a
+   * stable-id <style> keeps the effect off the hydrated host elements (same
+   * shape as the scroll-anchor lock). A falsy cursor clears the rule.
+   */
+  function setPageInteractionCursor(cursor) {
+    let style = document.getElementById(PICK_CURSOR_STYLE_ID);
+    if (!cursor) {
+      if (style) style.textContent = '';
+      return;
+    }
+    if (!style) {
+      style = document.createElement('style');
+      style.id = PICK_CURSOR_STYLE_ID;
+      // Styles the host page, not the chrome - inside the adapter's shadow UI
+      // root (uiAppendStyle's target) these selectors would match nothing.
+      (document.head || document.documentElement).appendChild(style);
+    }
     style.textContent =
-      'html.' + PICK_CURSOR_CLASS + ' * { cursor: crosshair !important; }\n'
-      + 'html.' + PICK_CURSOR_CLASS + ' [id^="' + PREFIX + '"],\n'
-      + 'html.' + PICK_CURSOR_CLASS + ' [id^="' + PREFIX + '"] * { cursor: revert !important; }';
-    // Styles the host page, not the chrome - inside the adapter's shadow UI
-    // root (uiAppendStyle's target) these selectors would match nothing.
-    document.head.appendChild(style);
+      '* { cursor: ' + cursor + ' !important; }\n'
+      + '[id^="' + PREFIX + '"],\n'
+      + '[id^="' + PREFIX + '"] * { cursor: revert !important; }';
   }
 
   /** Page-level cursor while pick or insert mode is targeting page elements. */
   function syncPageInteractionCursor() {
-    const pickCursor = state === 'PICKING' && pickActive && !insertActive;
-    let axisCursor = '';
-    if (state === 'PICKING' && insertActive) {
-      axisCursor = insertHoverAnchor ? cursorForInsertAxis(insertHoverAxis || 'column') : '';
+    let cursor = '';
+    if (state === 'PICKING' && pickActive && !insertActive) {
+      cursor = 'crosshair';
+    } else if (state === 'PICKING' && insertActive && insertHoverAnchor) {
+      cursor = cursorForInsertAxis(insertHoverAxis || 'column');
     }
-
-    if (pickCursor) {
-      ensurePickCursorStyle();
-      document.documentElement.classList.add(PICK_CURSOR_CLASS);
-      document.documentElement.style.cursor = '';
-      pageInteractionCursorActive = true;
-      return;
-    }
-
-    document.documentElement.classList.remove(PICK_CURSOR_CLASS);
-    if (axisCursor) {
-      document.documentElement.style.cursor = axisCursor;
-      pageInteractionCursorActive = true;
-    } else if (pageInteractionCursorActive) {
-      document.documentElement.style.cursor = '';
-      pageInteractionCursorActive = false;
-    }
+    setPageInteractionCursor(cursor);
   }
 
   /**
@@ -3034,16 +3037,26 @@
   function applyParamValue(variantEl, param, value) {
     if (!variantEl) return;
     const attr = 'data-p-' + param.id;
-    if (param.kind === 'range') {
-      variantEl.style.setProperty('--p-' + param.id, String(value));
-    } else if (param.kind === 'toggle') {
+    if (param.kind === 'toggle') {
       const on = !!value;
-      variantEl.style.setProperty('--p-' + param.id, on ? '1' : '0');
       if (on) variantEl.setAttribute(attr, 'on');
       else variantEl.removeAttribute(attr);
     } else if (param.kind === 'steps') {
       variantEl.setAttribute(attr, String(value));
     }
+    // Svelte component variants are client-mounted into
+    // [data-impeccable-component-mount] with no [data-impeccable-variant="N"]
+    // wrapper for the state stylesheet to target, and the element is not SSR'd,
+    // so there is no React hydration to mismatch. Drive range/toggle --p-* inline
+    // on the mounted element so scoped preview CSS resolves them.
+    if (svelteComponentSession?.sessionId === currentSessionId) {
+      if (param.kind === 'range') variantEl.style.setProperty('--p-' + param.id, String(value));
+      else if (param.kind === 'toggle') variantEl.style.setProperty('--p-' + param.id, value ? '1' : '0');
+      return;
+    }
+    // range/toggle --p-* custom properties are driven through the injected
+    // variant-state stylesheet so we never mutate inline style on SSR'd divs.
+    updateVariantStateStylesheet(currentSessionId, visibleVariant);
   }
 
   function applyParamDefaults(variantEl, params) {
@@ -4713,6 +4726,7 @@
       paramsCurrentValues = {};
       tuneOpen = false;
       hideParamsPanel();
+      if (currentSessionId && visibleVariant) updateVariantStateStylesheet(currentSessionId, visibleVariant);
       return;
     }
     applyParamDefaults(variantEl, params);
@@ -4770,20 +4784,7 @@
 
   function isVariantShown(el) {
     if (!el) return false;
-    if (el.hidden) return false;
-    if (el.style?.display === 'none') return false;
-    return true;
-  }
-
-  function setVariantShown(el, shown) {
-    if (!el) return;
-    if (shown) {
-      el.removeAttribute('hidden');
-      el.style.display = '';
-    } else {
-      el.setAttribute('hidden', '');
-      el.style.display = 'none';
-    }
+    return getComputedStyle(el).display !== 'none';
   }
 
   function scheduleCyclingBarSync(sessionId, variantNum) {
@@ -4822,11 +4823,7 @@
     }
     const wrapper = document.querySelector('[data-impeccable-variants="' + sessionId + '"]');
     if (!wrapper) return false;
-    for (const child of wrapper.children) {
-      const v = child.dataset ? child.dataset.impeccableVariant : null;
-      if (!v) continue;
-      setVariantShown(child, v === String(num));
-    }
+    updateVariantStateStylesheet(sessionId, num);
     // Unconditional refresh - covers first-reveal (no-op if state isn't
     // CYCLING yet, the subsequent CYCLING transition triggers its own
     // refresh) and every cycle step.
@@ -5491,6 +5488,7 @@
     if (pendingSvelteComponentRetryObserver) { pendingSvelteComponentRetryObserver.disconnect(); pendingSvelteComponentRetryObserver = null; }
     if (pendingVariantAnchorRetryObserver) { pendingVariantAnchorRetryObserver.disconnect(); pendingVariantAnchorRetryObserver = null; }
     stopScrollLock();
+    removeVariantStateStylesheet();
     clearSession();
     clearHandled();
     resetSessionFileMeta();
@@ -5805,6 +5803,68 @@
     return variantDiv;
   }
 
+  // Variant visibility and range/toggle params are expressed through ONE
+  // injected stylesheet, never inline attributes on the variant divs. Those
+  // divs are scaffolded into page source, so SSR frameworks (Next.js App
+  // Router) server-render them; toggling their `hidden` / inline `style` /
+  // `--p-*` client-side trips a React 19 hydration mismatch on the next
+  // Fast-Refresh re-render — the same failure mode the scroll-anchor (#276)
+  // and pick-cursor (#286) fixes address. A stylesheet rule has the same
+  // computed effect without mutating any hydrated element's attributes.
+  // (steps params keep driving `data-p-*` attributes, matching scoped CSS.)
+  const VARIANT_HIDE_DECL = 'display: none !important;';
+  const VARIANT_SHOW_DECL = 'display: block !important;';
+
+  // Build a direct-child variant selector for a session. With `num`, targets a
+  // single variant (`… > [data-impeccable-variant="N"]`); without it, targets
+  // every variant via the bare `[data-impeccable-variant]` attribute.
+  function variantStateSelector(sessionId, num) {
+    const wrapper = '[data-impeccable-variants="' + sessionId + '"]';
+    const variant = num == null
+      ? '[data-impeccable-variant]'
+      : '[data-impeccable-variant="' + num + '"]';
+    return wrapper + ' > ' + variant;
+  }
+
+  // Serialize the visible variant's knob values into `--p-<id>` custom-property
+  // declarations. Only range (number) and toggle (boolean) values become a
+  // custom property; steps params drive `data-p-*` attributes instead.
+  function variantParamDecls(values) {
+    return Object.entries(values || {})
+      .map(([id, val]) => {
+        if (typeof val === 'number') return ' --p-' + id + ': ' + val + ';';
+        if (typeof val === 'boolean') return ' --p-' + id + ': ' + (val ? '1' : '0') + ';';
+        return '';
+      })
+      .join('');
+  }
+
+  function updateVariantStateStylesheet(sessionId, num) {
+    if (!sessionId || num == null || num < 1) return;
+
+    let styleEl = document.getElementById(VARIANT_STATE_STYLE_ID);
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = VARIANT_STATE_STYLE_ID;
+      (document.head || document.documentElement).appendChild(styleEl);
+    }
+
+    // Hide every variant except the visible one (incl. the SSR'd "original").
+    const hideOthers = variantStateSelector(sessionId)
+      + ':not([data-impeccable-variant="' + num + '"]) { ' + VARIANT_HIDE_DECL + ' }';
+
+    // Force-show the visible variant (beats the source inline display:none on
+    // v2/v3) and apply its knob values as custom properties.
+    const showVisible = variantStateSelector(sessionId, num)
+      + ' { ' + VARIANT_SHOW_DECL + variantParamDecls(paramsCurrentValues) + ' }';
+
+    styleEl.textContent = hideOthers + '\n' + showVisible + '\n';
+  }
+
+  function removeVariantStateStylesheet() {
+    document.getElementById(VARIANT_STATE_STYLE_ID)?.remove();
+  }
+
   // Hold window.scrollY at a fixed value across DOM mutations inside the
   // session's wrapper (HMR patches, variant inserts, cycle swaps).
   function startScrollLock(sessionId, initialTargetY) {
@@ -5815,10 +5875,22 @@
 
     try { history.scrollRestoration = 'manual'; } catch {}
 
-    const prevHtmlAnchor = document.documentElement.style.overflowAnchor;
-    const prevBodyAnchor = document.body.style.overflowAnchor;
-    document.documentElement.style.overflowAnchor = 'none';
-    document.body.style.overflowAnchor = 'none';
+    // Suppress the browser's scroll-anchoring on the scroll root so it can't
+    // fight our manual scroll correction. Apply this as a stylesheet rule, not
+    // as inline `style` on <html>/<body>: those elements are server-rendered by
+    // frameworks like Next.js App Router, and mutating their inline style makes
+    // React 19 report a hydration mismatch on the next Fast-Refresh re-render.
+    // A <style> rule has the same computed effect without touching any hydrated
+    // element's attributes. Like the inline version, it is recreated on every
+    // startScrollLock call, so reload survival (driven by the persisted scroll
+    // key) is unaffected.
+    let anchorLockStyle = document.getElementById(SCROLL_ANCHOR_LOCK_ID);
+    if (!anchorLockStyle) {
+      anchorLockStyle = document.createElement('style');
+      anchorLockStyle.id = SCROLL_ANCHOR_LOCK_ID;
+      anchorLockStyle.textContent = 'html,body{overflow-anchor:none !important;}';
+      (document.head || document.documentElement).appendChild(anchorLockStyle);
+    }
 
     const correct = (why) => {
       scrollLockRaf = null;
@@ -5853,8 +5925,7 @@
 
     scrollLockAbort = new AbortController();
     scrollLockAbort.signal.addEventListener('abort', () => {
-      document.documentElement.style.overflowAnchor = prevHtmlAnchor;
-      document.body.style.overflowAnchor = prevBodyAnchor;
+      document.getElementById(SCROLL_ANCHOR_LOCK_ID)?.remove();
     }, { once: true });
     const sig = { signal: scrollLockAbort.signal };
     // Track whether the most recent scroll came from a user gesture. We
@@ -6075,7 +6146,7 @@
       switch (msg.type) {
         case 'connected':
           hasProjectContext = !!msg.hasProjectContext;
-          if (!hasProjectContext) showToast('No PRODUCT.md found. Variants will be brand-agnostic. Run /impeccable init to generate one.', 7000);
+          if (!hasProjectContext) showToast(`No PRODUCT.md found. Variants will be brand-agnostic. Run ${IMPECCABLE_COMMAND} init to generate one.`, 7000);
           console.log('[impeccable] Live mode connected.');
           syncAgentPollingUi(!!msg.agentPolling);
           startAgentStatusPoll();
@@ -6489,10 +6560,13 @@
     ) {
       return;
     }
+    if (isPageEditableElement(deepActive) && !isInlineEditActive(deepActive)) {
+      return;
+    }
     // While a contenteditable text-leaf is focused, let the browser handle
     // all keys except Escape. Escape cancels the current edit (restores
     // original text) and blurs without saving, staying in CONFIGURING.
-    if (e.target.isContentEditable && inlineEditRows.some((r) => r.el === e.target)) {
+    if (e.target.isContentEditable && isInlineEditActive(e.target)) {
       if (e.key !== 'Escape') return;
       e.preventDefault();
       e.stopPropagation();
@@ -7621,6 +7695,7 @@ void main() {
     stopScrollTracking();
     if (variantObserver) { variantObserver.disconnect(); variantObserver = null; }
     stopScrollLock();
+    removeVariantStateStylesheet();
     clearScrollY();
     clearSession();
     resetSessionFileMeta();
@@ -7882,6 +7957,7 @@ void main() {
     if (variantObserver) { variantObserver.disconnect(); variantObserver = null; }
     if (pendingVariantAnchorRetryObserver) { pendingVariantAnchorRetryObserver.disconnect(); pendingVariantAnchorRetryObserver = null; }
     stopScrollLock();
+    removeVariantStateStylesheet();
     clearScrollY();
     finalizeInsertSession();
     clearSession();
@@ -7913,7 +7989,7 @@ void main() {
     const barTopFromBottom = barRect && barRect.height > 0
       ? Math.max(16, window.innerHeight - barRect.top + 12)
       : 16;
-    toastEl = el('div', {
+    const currentToast = el('div', {
       position: 'fixed', bottom: barTopFromBottom + 'px', left: '50%',
       transform: 'translateX(-50%) translateY(8px)',
       background: C.ink, color: C.white,
@@ -7923,19 +7999,24 @@ void main() {
       transition: 'opacity 0.25s ' + EASE + ', transform 0.25s ' + EASE,
       pointerEvents: 'none', maxWidth: '420px', textAlign: 'center',
     });
-    toastEl.id = PREFIX + '-toast';
-    toastEl.textContent = message;
-    uiAppend(toastEl);
+    toastEl = currentToast;
+    currentToast.id = PREFIX + '-toast';
+    currentToast.textContent = message;
+    uiAppend(currentToast);
     requestAnimationFrame(() => {
-      toastEl.style.opacity = '1';
-      toastEl.style.transform = 'translateX(-50%) translateY(0)';
+      if (toastEl !== currentToast) return;
+      currentToast.style.opacity = '1';
+      currentToast.style.transform = 'translateX(-50%) translateY(0)';
     });
     setTimeout(() => {
-      if (toastEl) {
-        toastEl.style.opacity = '0';
-        toastEl.style.transform = 'translateX(-50%) translateY(8px)';
-        setTimeout(() => { if (toastEl) { toastEl.remove(); toastEl = null; } }, 250);
-      }
+      if (toastEl !== currentToast) return;
+      currentToast.style.opacity = '0';
+      currentToast.style.transform = 'translateX(-50%) translateY(8px)';
+      setTimeout(() => {
+        if (toastEl !== currentToast) return;
+        currentToast.remove();
+        toastEl = null;
+      }, 250);
     }, duration);
   }
 
@@ -8186,7 +8267,7 @@ void main() {
   let voiceInterimBase = '';
   /** @type {{ mode: 'steer'|'configure', input: HTMLInputElement, submit: () => void, beforeStart?: () => void } | null} */
   let voiceCtx = null;
-  const PAGE_CHAT_COLLAPSED_W = '88px';
+  const PAGE_CHAT_COLLAPSED_W = '104px';
   const PAGE_CHAT_PROCESSING_W = '76px';
   const PAGE_CHAT_PLACEHOLDER_COLLAPSED = 'Steer…';
   const PAGE_CHAT_PLACEHOLDER_EXPANDED = 'Steer the page…';
@@ -8197,7 +8278,7 @@ void main() {
   const GLOBAL_BAR_SECTION_GAP = 8;
   const GLOBAL_BAR_INNER_GAP = 2;
   const GLOBAL_BAR_INNER_PAD_LEFT = 2;
-  const PAGE_CHAT_EXPANDED_W = 'min(280px, 38vw)';
+  const PAGE_CHAT_EXPANDED_MAX_W = 280;
   const ICON_PAGE_CHAT =
     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
   const ICON_PAGE_VOICE =
@@ -8277,6 +8358,52 @@ void main() {
     return barPaletteForTheme(globalBarEl?.dataset.theme || detectPageTheme());
   }
 
+  function globalBarModeToggles() {
+    return [
+      uiGetById(PREFIX + '-pick-toggle'),
+      uiGetById(PREFIX + '-insert-toggle'),
+      uiGetById(PREFIX + '-detect-toggle'),
+      uiGetById(PREFIX + '-design-toggle'),
+    ].filter(Boolean);
+  }
+
+  function applyGlobalBarLabelState(expandInactive, forceCollapse = false) {
+    globalBarModeToggles().forEach((toggle) => {
+      if (forceCollapse) toggle._collapseLabel?.(true);
+      else if (expandInactive || toggle.dataset.active === 'true') toggle._expandLabel?.();
+      else toggle._collapseLabel?.();
+    });
+  }
+
+  function syncGlobalBarExpandedLabels(expanded = globalBarEl?.matches(':hover')) {
+    const expandInactive = !!(expanded && !pageChatExpanded);
+    applyGlobalBarLabelState(expandInactive, pageChatExpanded);
+
+    if (expandInactive && globalBarEl && globalBarEl.scrollWidth > window.innerWidth - 16) {
+      applyGlobalBarLabelState(false);
+    }
+  }
+
+  function pageChatCollapsedWidthPx() {
+    const parsed = parseFloat(PAGE_CHAT_COLLAPSED_W);
+    return Number.isFinite(parsed) ? parsed : 104;
+  }
+
+  function pageChatExpandedWidth() {
+    if (!pageChatEl || !globalBarEl) return PAGE_CHAT_EXPANDED_MAX_W + 'px';
+    const currentChatWidth = pageChatEl.getBoundingClientRect().width || pageChatCollapsedWidthPx();
+    const barWidth = Math.max(globalBarEl.getBoundingClientRect().width || 0, globalBarEl.scrollWidth || 0);
+    const nonChatWidth = Math.max(0, barWidth - currentChatWidth);
+    const available = window.innerWidth - 16 - nonChatWidth;
+    const next = Math.max(pageChatCollapsedWidthPx(), Math.min(PAGE_CHAT_EXPANDED_MAX_W, available));
+    return Math.round(next) + 'px';
+  }
+
+  function syncPageChatExpandedWidth() {
+    if (!pageChatEl || !pageChatExpanded) return;
+    pageChatEl.style.width = pageChatExpandedWidth();
+  }
+
   function syncPageChatChrome() {
     if (!pageChatEl) return;
     const P = pageChatPalette();
@@ -8312,6 +8439,21 @@ void main() {
       && !steerLocked;
   }
 
+  function isPageEditableElement(el) {
+    if (!el || own(el)) return false;
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName || '')) return true;
+    return !!el.isContentEditable;
+  }
+
+  function isInlineEditActive(el) {
+    return !!el && inlineEditRows.some((r) => r.el === el);
+  }
+
+  function isPageEditableActive() {
+    const active = activeElementDeep();
+    return isPageEditableElement(active) && !isInlineEditActive(active);
+  }
+
   function pageHasHostTextSelection() {
     const sel = window.getSelection?.();
     if (!sel || sel.isCollapsed) return false;
@@ -8325,6 +8467,7 @@ void main() {
   function shouldSteerAutoFocus() {
     return shouldFocusSteerChat()
       && !steerFocusSuspended
+      && !isPageEditableActive()
       && performance.now() >= steerFocusPauseUntil;
   }
 
@@ -8562,7 +8705,8 @@ void main() {
     if (!pageChatEl || !pageChatInput) return false;
     pageChatExpanded = true;
     pageChatEl.dataset.expanded = 'true';
-    pageChatEl.style.width = PAGE_CHAT_EXPANDED_W;
+    syncGlobalBarExpandedLabels(false);
+    pageChatEl.style.width = pageChatExpandedWidth();
     pageChatEl.style.cursor = steerLocked ? 'default' : 'text';
     pageChatInput.placeholder = PAGE_CHAT_PLACEHOLDER_EXPANDED;
     if (pageChatHint) {
@@ -8657,7 +8801,7 @@ void main() {
     pageChatEl.setAttribute('aria-label', 'Steer the page');
     pageChatExpanded = keepExpanded;
     pageChatEl.dataset.expanded = keepExpanded ? 'true' : 'false';
-    pageChatEl.style.width = keepExpanded ? PAGE_CHAT_EXPANDED_W : PAGE_CHAT_COLLAPSED_W;
+    pageChatEl.style.width = keepExpanded ? pageChatExpandedWidth() : PAGE_CHAT_COLLAPSED_W;
     pageChatEl.style.cursor = 'pointer';
     if (pageChatInput) {
       pageChatInput.disabled = false;
@@ -8971,6 +9115,7 @@ void main() {
     pageChatEl.dataset.expanded = 'false';
     pageChatEl.style.width = PAGE_CHAT_COLLAPSED_W;
     pageChatEl.style.cursor = 'pointer';
+    syncGlobalBarExpandedLabels(globalBarEl?.matches(':hover'));
     if (blur) {
       pageChatInput.blur();
       pageChatInput.style.pointerEvents = 'none';
@@ -9270,6 +9415,7 @@ void main() {
       zIndex: Z.bar + 5,
       display: 'flex', alignItems: 'stretch',
       gap: '0',
+      width: 'max-content',
       background: P.surface,
       border: '1px solid ' + P.border,
       borderRadius: '8px',
@@ -9277,6 +9423,8 @@ void main() {
       fontFamily: FONT, fontSize: '12px', lineHeight: '1',
       opacity: '0',
       overflow: 'hidden',          // clip the full-bleed brand mark to the bar radius
+      maxWidth: 'calc(100vw - 16px)',
+      boxSizing: 'border-box',
       transition: 'opacity 0.3s ' + EASE + ', transform 0.3s ' + EASE,
     });
     globalBarEl.id = PREFIX + '-global-bar';
@@ -9325,6 +9473,7 @@ void main() {
     const inner = el('div', {
       display: 'flex', alignItems: 'center',
       padding: '4px 5px 4px ' + GLOBAL_BAR_INNER_PAD_LEFT + 'px', gap: GLOBAL_BAR_INNER_GAP + 'px',
+      flex: '0 0 auto',
     });
     inner.id = PREFIX + '-global-bar-inner';
     globalBarEl.appendChild(inner);
@@ -9333,7 +9482,10 @@ void main() {
     function makeIconBtn({ id, svg, label, ariaLabel, labelFont, onClick }) {
       const b = el('button', {
         position: 'relative',
-        display: 'inline-flex', alignItems: 'center',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        boxSizing: 'border-box',
+        flex: '0 0 auto',
+        minWidth: '30px',
         padding: '6px 8px', borderRadius: '7px',
         border: 'none', background: 'transparent',
         color: P.textDim, fontFamily: FONT, fontSize: '11.5px', fontWeight: '500',
@@ -9352,8 +9504,8 @@ void main() {
         if (!labelEl) return;
         labelEl.style.maxWidth = '120px'; labelEl.style.opacity = '1'; labelEl.style.marginLeft = '6px'; labelEl.style.transform = 'translateX(0)';
       };
-      const collapse = () => {
-        if (!labelEl || b.dataset.active === 'true') return;
+      const collapse = (force = false) => {
+        if (!labelEl || (!force && b.dataset.active === 'true')) return;
         labelEl.style.maxWidth = '0'; labelEl.style.opacity = '0'; labelEl.style.marginLeft = '0'; labelEl.style.transform = 'translateX(-4px)';
       };
       // Per-button hover only changes color (no layout). The label expand/
@@ -9604,6 +9756,7 @@ void main() {
       width: '1px', height: '18px',
       background: P.hairline,
       margin: '0 4px 0 2px',
+      flexShrink: '0',
     });
     inner.appendChild(divider);
 
@@ -9620,6 +9773,7 @@ void main() {
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
       padding: '0', boxSizing: 'border-box',
       width: '24px', height: '24px', borderRadius: '6px',
+      flexShrink: '0',
       border: 'none', background: 'transparent',
       color: P.textDim, fontFamily: FONT, fontSize: '0', lineHeight: '0',
       cursor: 'pointer', transition: 'color 0.12s ease, background 0.12s ease',
@@ -9632,16 +9786,16 @@ void main() {
     exitBtn.addEventListener('click', () => { sendEvent({ type: 'exit' }); teardown(); });
     inner.appendChild(exitBtn);
 
-    // Bar-level hover: expand every toggle's label at once; collapse on leave.
+    // Bar-level hover: expand mode labels unless Steer is using the space.
     // Buttons with dataset.active="true" ignore collapse (their label stays).
-    const toggles = [pickBtn, insertBtn, detectBtn, designBtn];
     globalBarEl.addEventListener('mouseenter', () => {
-      toggles.forEach((t) => t._expandLabel && t._expandLabel());
+      syncGlobalBarExpandedLabels(true);
+      syncPageChatExpandedWidth();
       schedulePendingDockPosition();
       setTimeout(schedulePendingDockPosition, 260);
     });
     globalBarEl.addEventListener('mouseleave', () => {
-      toggles.forEach((t) => t._collapseLabel && t._collapseLabel());
+      syncGlobalBarExpandedLabels(false);
       schedulePendingDockPosition();
       setTimeout(schedulePendingDockPosition, 260);
     });
@@ -9659,6 +9813,7 @@ void main() {
       pendingDockResizeObserver.observe(globalBarEl);
     }
     window.addEventListener('resize', positionPendingDock);
+    window.addEventListener('resize', syncPageChatExpandedWidth);
 
     requestAnimationFrame(() => {
       globalBarEl.style.opacity = '1';
@@ -9705,9 +9860,7 @@ void main() {
     // If the bar is currently under the cursor, keep all labels expanded -
     // otherwise clicking a toggle that deactivates (e.g. closing DESIGN.md)
     // would collapse its label while the user's mouse is still on the bar.
-    if (globalBarEl && globalBarEl.matches(':hover')) {
-      [pickToggle, insertToggle, detectToggle, designToggle].forEach((t) => t?._expandLabel?.());
-    }
+    syncGlobalBarExpandedLabels(globalBarEl && globalBarEl.matches(':hover'));
 
     if (detectBadge) {
       detectBadge.style.display = (detectActive && detectCount > 0) ? 'inline' : 'none';
@@ -9896,7 +10049,8 @@ void main() {
     // Remove detection overlays
     window.postMessage({ source: 'impeccable-command', action: 'remove' }, '*');
     setLiveState('IDLE');
-    document.getElementById(PREFIX + '-pick-cursor-style')?.remove();
+    document.getElementById(PICK_CURSOR_STYLE_ID)?.remove();
+    removeVariantStateStylesheet();
     window.__IMPECCABLE_LIVE_INIT__ = false;
     console.log('[impeccable] Live mode exited.');
   }
@@ -10385,7 +10539,7 @@ void main() {
     if (designState.present === false) {
       const empty = document.createElement('div');
       empty.className = 'empty';
-      empty.innerHTML = `<strong>No DESIGN.md yet</strong>Create one by running <code>/impeccable document</code> in your terminal, then re-open this panel.`;
+      empty.innerHTML = `<strong>No DESIGN.md yet</strong>Create one by running <code>${IMPECCABLE_COMMAND} document</code> in your terminal, then re-open this panel.`;
       body.appendChild(empty);
       return;
     }
@@ -10415,7 +10569,7 @@ void main() {
     box.className = 'stale';
     box.innerHTML = `
       <span class="stale-dot"></span>
-      <span class="stale-text"><strong>DESIGN.md is newer than .impeccable/design.json.</strong> Run <code>/impeccable document</code> to refresh the sidecar.</span>
+      <span class="stale-text"><strong>DESIGN.md is newer than .impeccable/design.json.</strong> Run <code>${IMPECCABLE_COMMAND} document</code> to refresh the sidecar.</span>
     `;
     return box;
   }
@@ -10423,7 +10577,7 @@ void main() {
   function renderParsedMdCta() {
     const box = document.createElement('div');
     box.className = 'parsed-md-cta';
-    box.innerHTML = `<strong>Basic view</strong>This panel reads the tokens in your <code>DESIGN.md</code> frontmatter. Running <code>/impeccable document</code> also generates a <code>.impeccable/design.json</code> sidecar with your project's actual component snippets (button, input, nav) and tonal ramps, rendered live below the tokens.`;
+    box.innerHTML = `<strong>Basic view</strong>This panel reads the tokens in your <code>DESIGN.md</code> frontmatter. Running <code>${IMPECCABLE_COMMAND} document</code> also generates a <code>.impeccable/design.json</code> sidecar with your project's actual component snippets (button, input, nav) and tonal ramps, rendered live below the tokens.`;
     return box;
   }
 

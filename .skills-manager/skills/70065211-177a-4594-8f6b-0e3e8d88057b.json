@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "70065211-177a-4594-8f6b-0e3e8d88057b",
+  "path": "dingtalk-event",
+  "path_key": "dingtalk-event",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "https://github.com/DingTalk-Real-AI/dingtalk-workspace-cli",
+    "subpath": "skills/multi/dingtalk-event",
+    "branch": null
+  }
+}

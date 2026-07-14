@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "aa09a279-a53f-4ddb-a604-f70b6af9856f",
+  "path": "dingtalk-minutes",
+  "path_key": "dingtalk-minutes",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "https://github.com/DingTalk-Real-AI/dingtalk-workspace-cli",
+    "subpath": "skills/multi/dingtalk-minutes",
+    "branch": null
+  }
+}

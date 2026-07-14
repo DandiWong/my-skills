@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "9a7bccdd-34bb-43ff-bdfb-38ca61da0640",
+  "path": "dws",
+  "path_key": "dws",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "https://github.com/DingTalk-Real-AI/dingtalk-workspace-cli",
+    "subpath": "skills/mono",
+    "branch": null
+  }
+}

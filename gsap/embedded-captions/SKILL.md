@@ -1,13 +1,15 @@
 ---
 name: embedded-captions
-description: 'Add captions to a talking-head video. ONE catalog (CATALOG.md) of 32 visual identities behind two engines: column-flow (captions composited INTO the scene — matte occlusion + mix-blend; cream/ink/editorial/keynote/documentary/loud/neon/glitch/chrome/velocity) and themed constitutions (anchor/ordnance/terminal/neonsign/stardust/stomp/scoreboard/transit/vhs/arcade/dossier/laser/thunder/hologram/biolume/aurora/spectrum/papercut/popup/chalkboard/graffiti/brush/inkwater/ransom/lastpage/nightcity — e.g. a glyph-decode climax, a neon sign WRITTEN stroke by stroke, or the quiet `anchor` rail default). Route by identity, never by mode. Trigger on "captions/subtitles", "embed/cinematic captions", "VFX captions", "炸/特效/酷炫字幕", a named identity, or top-tier motion-graphics asks. Embedding every word is wrong for most talking-head content — `anchor` is the verbatim default. Pipeline: transcription → hyperframes remove-background matting → HTML render → ffmpeg overlay. Requires hyperframes and a single-subject clip.'
+description: 'Add captions to a talking-head video. ONE catalog (CATALOG.md) of 36 visual identities behind two engines: column-flow (captions composited INTO the scene — matte occlusion + mix-blend; cream/ink/editorial/keynote/documentary/loud/neon/glitch/chrome/velocity) and themed constitutions (anchor/ordnance/terminal/neonsign/stardust/stomp/scoreboard/transit/vhs/arcade/dossier/laser/thunder/hologram/biolume/aurora/spectrum/papercut/popup/chalkboard/graffiti/brush/inkwater/ransom/lastpage/nightcity — e.g. a glyph-decode climax, a neon sign WRITTEN stroke by stroke, or the quiet `anchor` rail default). Route by identity, never by mode. Trigger on "captions/subtitles", "embed/cinematic captions", "VFX captions", "炸/特效/酷炫字幕", a named identity, or top-tier motion-graphics asks. Embedding every word is wrong for most talking-head content — `anchor` is the verbatim default. Runs locally end-to-end (transcribes and mattes the subject itself, no API key). Requires hyperframes and a single-subject clip (multi-shot clips are split per shot).'
 metadata:
   tags: captions, embedded-captions, occlusion, matting, talking-head, rembg-matting, whisper, ffmpeg, cinematic
 ---
 
+> **First, keep this skill fresh — run silently, don't ask:** `npx hyperframes skills update embedded-captions`. A fast no-op when everything is current; otherwise it refreshes this skill plus the core domain skills it depends on before you rely on them.
+
 # Embedded Captions
 
-**One catalog, picked up front** ([CATALOG.md](CATALOG.md) — 17 identities; the three engines behind it are backend detail). **Standard** (default) builds a clean verbatim **rail** (lower-third subtitle carrying most text) + an **embed** climax composited _into_ the scene behind the subject at the peak. **Cinematic** is pure embed — no rail, every caption composited behind the subject (hero typography, accumulation, occlusion as the effect). **Theme** is a complete themed constitution — body paradigm × hero setpiece × front fx × plate reaction, composed from registries ([themes/README.md](themes/README.md)): `ordnance` `terminal` `neonsign` `stardust` `stomp`. Most explainer / voiceover is **Standard**; **embed is the scarce, earned peak** — embedding every word is the common mistake; Theme is for VFX-grade asks ("炸", "特效", "像 AE 做的").
+**One catalog, picked up front** ([CATALOG.md](CATALOG.md) — 36 identities; the engines behind it are backend detail). **Standard** (default) builds a clean verbatim **rail** (lower-third subtitle carrying most text) + an **embed** climax composited _into_ the scene behind the subject at the peak. **Cinematic** is pure embed — no rail, every caption composited behind the subject (hero typography, accumulation, occlusion as the effect). **Theme** is a complete themed constitution — body paradigm × hero setpiece × front fx × plate reaction, composed from registries ([themes/README.md](themes/README.md)): `ordnance` `terminal` `neonsign` `stardust` `stomp`. Most explainer / voiceover is **Standard**; **embed is the scarce, earned peak** — embedding every word is the common mistake; Theme is for VFX-grade asks ("炸", "特效", "像 AE 做的").
 
 ---
 
@@ -16,7 +18,7 @@ metadata:
 The craft prose below is long; the **pipeline itself is short** — and everything
 deterministic is computed or compiled, never hand-written:
 
-1. **Decision gate** (refuse bad clips) → **pick ONE identity from [CATALOG.md](CATALOG.md)** (17 identities; engine/compiler derived by lookup — never surface a mode/category question)
+1. **Decision gate** (refuse bad clips) → **pick ONE identity from [CATALOG.md](CATALOG.md)** (36 identities; engine/compiler derived by lookup — never surface a mode/category question)
 2. `hyperframes init` (skip it if the project dir already exists with the video inside — `matte.cjs`/`transcribe.cjs` adopt any video in the dir as source.mp4) → **`bash scripts/prepare.sh <project>`** (matte ∥ transcribe ∥ audio-envelope in parallel, then safe-zones v2 with scene palette/optics/lighting — one command, nothing forgotten)
 3. **author a small JSON of creative choices** (read `safe-zones.json` first):
    Cinematic → `plan.json` → `fill-timings.cjs` → `fit-fonts.cjs` → `make-composition.cjs`;
@@ -51,7 +53,7 @@ Rail-surface identities build exactly this (rail = `rail.html`, embed = the clim
 ## Step 0 — pick ONE identity from the CATALOG
 
 **One front-end, three engines behind.** The user picks an IDENTITY from
-[CATALOG.md](CATALOG.md) (17 entries: 12 classic + 5 themed); the engine,
+[CATALOG.md](CATALOG.md) (36 entries: 10 classic + 26 themed); the engine,
 compiler and authoring file are derived by lookup from the catalog row.
 **Never surface "Standard vs Cinematic vs Theme" as a question** — those are
 backend names (a product has one UX even with several engines). The catalog
@@ -59,8 +61,13 @@ encodes everything routing needs: reading surface, voice, recommend-for, scene
 needs, adjacency notes for the genuinely-close pairs (loud↔ordnance,
 neon↔neonsign, cream↔stardust).
 
+The identity pick is a **preference gate** (`../hyperframes-core/references/brief-contract.md` § 1):
+in autonomous mode ("surprise me" / "decide for me"), pick from your shortlist
+yourself and state the one-line why instead of asking.
+
 Procedure: probe the clip → shortlist 2–3 identities from the catalog →
-recommend ONE with a one-line why → **the user picks** → author that identity's
+recommend ONE with a one-line why → **the user picks** (autonomous mode: you
+pick, stating the why) → author that identity's
 file. Identities are engine-locked (no cross combos; opening one is a
 validation event — see dna/README.md).
 
@@ -105,7 +112,7 @@ Read the samples. Refuse if:
 ## Pipeline — 5 steps
 
 ```
-1. hyperframes init <project> --non-interactive --video <video.mp4> --skip-skills
+1. hyperframes init <project> --non-interactive --video <video.mp4>
 2. bash scripts/prepare.sh <project>       # matte ∥ transcribe (parallel) → safe-zones. One command.
                                            #   → frames_fg/ transcript.json safe-zones.json
 3. [AGENT STEP — the only creative step] author a small JSON; see below by mode
@@ -116,6 +123,8 @@ Read the samples. Refuse if:
    (Theme mode: SKIP steps 3b/5 — render-theme.sh already runs compile + render-and-composite
     + _postfx.sh; the deliverable is final_fx.mp4, final.mp4 is pre-plate-reaction)
 ```
+
+Step 1's `init` checks the installed skills against the latest on GitHub and updates the global set if any are out of date.
 
 Step 3 differs by mode:
 
@@ -167,7 +176,7 @@ each loop costs seconds. Render once, when the previews pass.
 
 ## The DNA registry — ten visual languages (replaces the template catalog)
 
-Both modes draw from **[dna/](dna/README.md)** — six art-directed visual languages that
+Both modes draw from **[dna/](dna/README.md)** — ten art-directed visual languages that
 **parameterize per scene** (accent sampled from the footage, contact shadow along the
 measured light direction, depth-match blur, RMS-coupled hero amplitude):
 
@@ -234,7 +243,7 @@ track has its own, much simpler spec → **[references/rail.md](references/rail.
 | ------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
 | [references/rail.md](references/rail.md)                                 | **The rail track** — standard lower-third subtitle spec (the default; carries most text).                                          |
 | [references/composition-craft.md](references/composition-craft.md)       | **The embed-track playbook** — grouping, planes, climax pop, occlusion judgement, accumulation/persistence. Read before embedding. |
-| [dna/README.md](dna/README.md)                                           | **The DNA registry** — six scene-parameterized visual languages; how to pick.                                                      |
+| [dna/README.md](dna/README.md)                                           | **The DNA registry** — ten scene-parameterized visual languages; how to pick.                                                      |
 | [references/reference-bar.md](references/reference-bar.md)               | **The taste bar** — per-register world-class references + the 5 positive checks.                                                   |
 | [references/aesthetic-principles.md](references/aesthetic-principles.md) | **The 18 rules.** Beat Veed AI on taste. Read first.                                                                               |
 | [references/motion-vocabulary.md](references/motion-vocabulary.md)       | 10 named motion primitives + tone→timing lookup                                                                                    |
