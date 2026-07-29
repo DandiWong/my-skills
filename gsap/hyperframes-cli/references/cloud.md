@@ -7,11 +7,12 @@ npx hyperframes auth login            # one-time sign-in
 npx hyperframes cloud render          # zip, upload, render, download
 ```
 
-## When to use cloud vs lambda vs local
+## When to use managed cloud, Lambda, Cloud Run, or local
 
 - **`hyperframes render`** (local): fastest iteration loop, use while authoring.
 - **`hyperframes cloud render`**: zero-infra. HeyGen runs the render and you pay per credit. This is the default answer to "render in the cloud" when you don't want to manage Chrome/FFmpeg/AWS.
 - **`hyperframes lambda render`**: bring-your-own-AWS distributed rendering with chunked parallelism. Only worth it when you've already invested in AWS (see `lambda.md`).
+- **`hyperframes cloudrun render`**: bring-your-own-GCP distributed rendering through Cloud Run and Workflows. Use only when GCP ownership is explicit (see `cloudrun.md`).
 
 ## Authentication
 
@@ -21,6 +22,10 @@ Cloud rendering needs a HeyGen credential, stored at `~/.heygen/credentials` (`0
 npx hyperframes auth login              # OAuth 2.0 + PKCE, opens the browser
 npx hyperframes auth login --api-key    # CI/headless: hidden prompt, or pipe: echo "$HEYGEN_API_KEY" | ... --api-key
 npx hyperframes auth status             # active credential source, identity, billing snapshot
+                                        #   exit 0 = signed in and verified; exit 1 = not signed in,
+                                        #   or the credential was rejected — signed-out exit 1 is the
+                                        #   normal offline state (scripts: `auth status || echo offline`),
+                                        #   not a command failure
 npx hyperframes auth refresh            # force-refresh an OAuth token before a long job
 npx hyperframes auth logout             # clear the stored credential
 ```
@@ -33,11 +38,45 @@ Credential resolution order (first match wins): `HEYGEN_API_KEY`, then `HYPERFRA
 
 1. **Resolve the project**: a local directory (default `.`), or skip the upload with `--asset-id` / `--url`.
 2. **Auto-detect aspect ratio** from the entry HTML's `data-width`/`data-height`.
-3. **Zip** the project (same ignore set as `hyperframes publish`, so it excludes `.git`, `node_modules`, `dist`, and so on).
-4. **Upload** the zip to `POST /v3/assets`, yielding an `asset_id`.
+3. **Zip** the project (same ignore set as `hyperframes publish`, including `.hyperframesignore`).
+4. **Upload** the zip through the direct-to-S3 asset flow, yielding an `asset_id`.
 5. **Submit** the render to `POST /v3/hyperframes/renders`, yielding a `render_id`.
 6. **Poll** `GET /v3/hyperframes/renders/{id}` until it completes or fails (skip with `--no-wait`).
 7. **Download** the signed video URL to disk.
+
+## Archive size and `.hyperframesignore`
+
+The direct-upload limit is 200 MB. HyperFrames automatically excludes root-level `renders/` and `snapshots/`, along with its existing development exclusions such as `.git`, `node_modules`, `dist`, `.next`, `coverage`, and dotfiles. Add project-specific gitignore-style rules to `<project>/.hyperframesignore` when other generated or intermediate assets are not required at render time. The same rules affect `hyperframes publish`.
+
+Inspect the exact archive without authenticating, uploading, spending credits, or starting a render:
+
+```bash
+npx hyperframes cloud render <project> --dry-run --json
+```
+
+The result reports compressed `size_bytes`, `file_count`, the 200 MB limit, and the ten largest included files.
+
+When a cloud upload reports a size-limit error, agents must use this workflow:
+
+1. Run the dry-run command and inspect the largest included files and directories.
+2. Classify obvious generated outputs first: old renders, extra snapshot/contact-sheet directories, caches, exported previews, and source media used only to produce final assets.
+3. Before excluding anything else, search `src`, `href`, `url()`, `data-composition-src`, JavaScript strings, manifests, and variable-driven paths across every HTML, CSS, and JavaScript entry.
+4. Preserve existing `.hyperframesignore` comments and rules. Add the narrowest verified-unneeded root-relative paths; prefer an exact directory or file over a broad wildcard.
+5. Never ignore `index.html`, the selected composition, mounted sub-compositions, fonts, images, audio, video, scripts, or manifests merely because they are large. Never ignore all of `assets/`.
+6. Rerun dry-run until the archive is below the limit, then run `npx hyperframes check`. Remember that `check` sees the source directory, so it cannot prove a dynamically computed asset path remains in the filtered archive; the reference audit is still required.
+
+Example:
+
+```gitignore
+# Additional generated verification passes
+/snapshots2/
+/snapshots3/
+
+# Master used only to produce the final background clips
+/assets/bg-pattern.mp4
+```
+
+Rules support comments, globs, and negation. A later rule can override a default, for example `!/snapshots/` when that directory intentionally contains render inputs.
 
 ## Render options
 
@@ -50,6 +89,7 @@ Credential resolution order (first match wins): `HEYGEN_API_KEY`, then `HYPERFRA
 | `--aspect-ratio`       | auto                        | `16:9`, `9:16`, or `1:1`. Auto from a local project's `data-width`/`data-height`; defaults to `16:9` for `--asset-id`/`--url`. |
 | `--composition` / `-c` | `index.html`                | Entry HTML file inside the zip.                                                                                                |
 | `--output` / `-o`      | `renders/<render_id>.<ext>` | Local download destination.                                                                                                    |
+| `--dry-run`            | off                         | Build and inspect a local project zip without authenticating, uploading, or rendering.                                         |
 
 ```bash
 npx hyperframes cloud render . \
@@ -63,7 +103,7 @@ npx hyperframes cloud render --quality high --fps 60
 
 ## Templates and variables
 
-Cloud rendering supports [variables](../SKILL.md#variables-parametrized--template-renders): declare `data-composition-variables` on the composition, then fill them at render time.
+Cloud rendering supports [composition variables](../../hyperframes-core/references/variables-and-media.md#variables): declare `data-composition-variables` on the composition, then fill them at render time.
 
 ```bash
 npx hyperframes cloud render --variables '{"title":"Q4 Recap","theme":"dark"}'
@@ -81,7 +121,7 @@ npx hyperframes cloud render --asset-id asst_abc123 --variables '{"name":"Ada"}'
 npx hyperframes cloud render --asset-id asst_abc123 --variables '{"name":"Linus"}'
 ```
 
-For high-volume personalized batches, the Lambda path adds a JSONL fan-out (see `lambda.md`). The full variables schema (types, declarative bindings, sub-composition overrides, precedence) lives in the `hyperframes-core` skill.
+For high-volume personalized batches, both self-managed paths provide JSONL fan-out: AWS Lambda (`lambda.md`) and Google Cloud Run (`cloudrun.md`). The full variables schema (types, declarative bindings, sub-composition overrides, precedence) lives in the `hyperframes-core` skill.
 
 ## Fire-and-forget and webhooks
 

@@ -634,7 +634,7 @@ public partial class WordHandler
         // position; they are only schema-valid inside a table STYLE's tblPr
         // (CT_TblPrStyle). Inserting them bare therefore always validates as
         // "invalid child element 'tblStyleRowBandSize'", no matter the order.
-        // wml-aware consumers (Word, LibreOffice — whose DOCX export writes
+        // wml-aware consumers (Word and other editors — whose DOCX export writes
         // them document-side at the CT_TblPrBase rank-4/5 slot) DO honor the
         // elements, so we keep them document-side but wrap them in an
         // mc:AlternateContent guard with Requires="w": every wordprocessingml
@@ -807,6 +807,7 @@ public partial class WordHandler
         // required trailing empty paragraph here so Word can open the doc.
         if (parent is TableCell && parent.LastChild is Table)
             parent.AppendChild(new Paragraph());
+        _lastAddedTable = table;
         var tbls = parent.Elements<Table>().ToList();
         var idx = tbls.FindIndex(t => ReferenceEquals(t, table));
         return $"{parentPath}/tbl[{(idx >= 0 ? idx + 1 : tbls.Count)}]";

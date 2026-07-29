@@ -10,7 +10,8 @@ from docx import Document
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "generate_minutes_docx.py"
-REFERENCE = ROOT / "assets" / "reference.docx"
+ZHONGSHAN = ROOT / "assets" / "template_zhongshan.docx"
+INTERNAL = ROOT / "assets" / "template_internal.docx"
 SKILL_MD = ROOT / "SKILL.md"
 MANIFEST = ROOT / "manifest.json"
 CHECK_ENV = ROOT / "scripts" / "check_env.py"
@@ -35,26 +36,24 @@ def first_run_with_text(paragraph):
     return next(run for run in paragraph.runs if run.text.strip())
 
 
-def run_generator(payload):
+def run_generator(payload, template=None):
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         json_path = tmp_path / "minutes.json"
         json_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
-        result = subprocess.run(
-            [
-                sys.executable,
-                str(SCRIPT),
-                "--json",
-                str(json_path),
-                "--output-dir",
-                str(tmp_path),
-                "--date",
-                "2026-06-11",
-            ],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
+        command = [
+            sys.executable,
+            str(SCRIPT),
+            "--json",
+            str(json_path),
+            "--output-dir",
+            str(tmp_path),
+            "--date",
+            "2026-06-11",
+        ]
+        if template:
+            command.extend(["--template", str(template)])
+        result = subprocess.run(command, check=True, capture_output=True, text=True)
         return Document(Path(result.stdout.strip()))
 
 
@@ -104,7 +103,7 @@ class GenerateMinutesDocxTests(unittest.TestCase):
         }
 
     def test_generated_paragraph_styles_follow_reference_docx(self):
-        reference = Document(REFERENCE)
+        reference = Document(ZHONGSHAN)
         generated = run_generator(self.sample_payload())
 
         self.assertEqual([p.style.name for p in generated.paragraphs[:3]], ["Heading 1"] * 3)
@@ -123,7 +122,7 @@ class GenerateMinutesDocxTests(unittest.TestCase):
             self.assertEqual(generated_run.font.size, reference_run.font.size)
 
     def test_action_table_layout_uses_reference_headers_and_legacy_mapping(self):
-        reference = Document(REFERENCE)
+        reference = Document(ZHONGSHAN)
         generated = run_generator(self.sample_payload())
 
         reference_headers = [cell.text for cell in reference.tables[0].rows[0].cells]
@@ -141,8 +140,47 @@ class GenerateMinutesDocxTests(unittest.TestCase):
         frontmatter = read_frontmatter(SKILL_MD)
 
         self.assertEqual(frontmatter["name"], "fosunpharma-meeting-minutes")
-        self.assertEqual(frontmatter["version"], "0.3.9")
-        self.assertIn("v0.3.9", frontmatter["description"])
+        self.assertEqual(frontmatter["version"], "0.4.2")
+        self.assertIn("v0.4.2", frontmatter["description"])
+
+    def test_named_and_path_templates_preserve_expected_header_logos(self):
+        payload = self.sample_payload()
+
+        self.assertEqual(len(run_generator(payload, "zhongshan").sections[0].header._element.xpath(".//a:blip")), 2)
+        self.assertEqual(len(run_generator(payload, "internal").sections[0].header._element.xpath(".//a:blip")), 1)
+        self.assertEqual(len(run_generator(payload, INTERNAL).sections[0].header._element.xpath(".//a:blip")), 1)
+
+    def test_internal_template_uses_single_organization_title_and_participant_list(self):
+        generated = run_generator(self.sample_payload(), "internal")
+        paragraphs = [p.text for p in generated.paragraphs if p.text.strip()]
+
+        self.assertEqual(generated.paragraphs[0].text, "复星医药")
+        self.assertIn(
+            "参会人员：张三（复星医药/项目负责人）；李四（合作方/技术负责人）",
+            paragraphs,
+        )
+        self.assertNotIn("甲方", "\n".join(paragraphs))
+        self.assertNotIn("乙方", "\n".join(paragraphs))
+
+    def test_missing_template_exits_with_clear_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            json_path = Path(tmp) / "minutes.json"
+            json_path.write_text(json.dumps(self.sample_payload(), ensure_ascii=False), encoding="utf-8")
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    "--json",
+                    str(json_path),
+                    "--template",
+                    "missing-template",
+                ],
+                capture_output=True,
+                text=True,
+            )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("not found", result.stderr)
 
     def test_participants_are_written_as_separate_lines_and_unknown_host_is_omitted(self):
         payload = self.sample_payload()

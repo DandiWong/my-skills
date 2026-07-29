@@ -20,11 +20,27 @@ from docx.shared import Pt
 
 
 SKILL_DIR = Path(__file__).resolve().parents[1]
-DEFAULT_TEMPLATE = SKILL_DIR / "assets" / "reference.docx"
+ASSETS_DIR = SKILL_DIR / "assets"
+TEMPLATE_MAP = {
+    "zhongshan": ASSETS_DIR / "template_zhongshan.docx",
+    "internal": ASSETS_DIR / "template_internal.docx",
+}
+DEFAULT_TEMPLATE_NAME = "zhongshan"
 TITLE_STYLE = "Heading 1"
 SECTION_STYLE = "Heading 2"
 SUBSECTION_STYLE = "Heading 3"
 BODY_STYLE = "Normal (Web)"
+
+
+def resolve_template(value: str) -> Path:
+    template = TEMPLATE_MAP.get(value.lower().strip(), Path(value))
+    if template.is_file():
+        return template
+    choices = ", ".join(TEMPLATE_MAP)
+    raise SystemExit(
+        f"Template '{value}' not found. Use one of: {choices}; "
+        "or provide a valid .docx path."
+    )
 
 
 def text_run(paragraph):
@@ -157,9 +173,15 @@ def title_topic(minutes: dict[str, Any]) -> str:
     return re.sub(r"会议纪要$", "", title) or "会议"
 
 
-def add_metadata(document: Document, minutes: dict[str, Any], profiles: dict[str, dict[str, Any]]) -> None:
+def add_metadata(
+    document: Document,
+    minutes: dict[str, Any],
+    profiles: dict[str, dict[str, Any]],
+    internal: bool = False,
+) -> None:
     metadata = minutes.get("metadata") or {}
-    for line in [title_units(metadata), title_topic(minutes), "会议纪要"]:
+    organization = "复星医药" if internal else title_units(metadata)
+    for line in [organization, title_topic(minutes), "会议纪要"]:
         p = document.add_paragraph(style=TITLE_STYLE)
         set_para(p, line, profiles[TITLE_STYLE])
 
@@ -168,8 +190,11 @@ def add_metadata(document: Document, minutes: dict[str, Any], profiles: dict[str
     add_body_item(document, f"会议地点：{metadata.get('会议地点', '【待补充】')}", profiles)
     add_body_item(document, "主要参会与发言人员", profiles)
     participants = [str(person) for person in minutes.get("participants") or ["【待补充】"]]
-    for person in participants:
-        add_body_item(document, person, profiles)
+    if internal:
+        add_body_item(document, f"参会人员：{'；'.join(participants)}", profiles)
+    else:
+        for person in participants:
+            add_body_item(document, person, profiles)
     host = str(metadata.get("主持人") or "").strip()
     if host and host not in {"【待补充】", "待补充", "待确认"}:
         add_body_item(document, f"主持人：{host}", profiles)
@@ -373,18 +398,28 @@ def add_actions(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", required=True, type=Path, help="Path to structured minutes JSON")
-    parser.add_argument("--template", default=DEFAULT_TEMPLATE, type=Path, help="Reference DOCX template")
+    parser.add_argument(
+        "--template",
+        default=DEFAULT_TEMPLATE_NAME,
+        help="Named template (zhongshan or internal) or a .docx path; defaults to zhongshan",
+    )
     parser.add_argument("--output-dir", default=Path.cwd(), type=Path, help="Output directory")
     parser.add_argument("--date", default=None, help="Output date in YYYY-MM-DD; defaults to today")
     parser.add_argument("--output-name", default=None, help="Optional explicit output filename")
     args = parser.parse_args()
 
     minutes = json.loads(args.json.read_text(encoding="utf-8"))
-    document = Document(args.template)
+    template_path = resolve_template(args.template)
+    document = Document(template_path)
     profiles = capture_profiles(document)
     table_profile = reference_table_profile(document)
     clear_body(document)
-    add_metadata(document, minutes, profiles)
+    add_metadata(
+        document,
+        minutes,
+        profiles,
+        internal=template_path.resolve() == TEMPLATE_MAP["internal"].resolve(),
+    )
 
     sections = deepcopy(minutes.get("sections") or [])
     actions = minutes.get("actions") or []

@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.4.2
+
+- Consolidated the v0.3.9 and v0.4.1 skills under the stable `fosunpharma-meeting-minutes` name.
+- Added named `zhongshan` and `internal` templates plus custom DOCX template paths.
+- Kept the detailed content, attribution, participant, action-item, JSON-repair, and compatibility rules from v0.3.9.
+- Applied template-specific titles, header logos, and participant formatting.
+
+## 0.4.1
+
+- Added the Fosun Pharma header logo to the internal template.
+- Changed the internal title block to `复星医药` plus the meeting topic, without party-A/party-B wording.
+- Changed the internal participant placeholder to one combined participant list.
+
+## 0.4.0
+
+- Added named `zhongshan` and `internal` templates plus support for custom DOCX template paths.
+- Added concise, non-technical writing guidance and explicit template selection rules.
+
 ## 0.3.9
 
 - Clarified the source-of-truth boundary: `SKILL.md` defines content structure and writing norms, while `assets/reference.docx` is used only for Word styling and layout.
