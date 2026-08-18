@@ -206,21 +206,47 @@ ${grammar}
 // returns no staging. Re-rolls exclude every earlier set until the pool runs out.
 export function selectApprovedStagings({ scope, key, reroll = 0, mode = null, sourceCompositions = null, count = 3 }) {
   const pool = sourceCompositions ?? requireLocalConcepts().compositions;
+  // Stagings honour the same breadth gate as worlds: a staging too specific to
+  // serve an arbitrary build stays approved for direct briefs and leaves the
+  // challenger pool. Falls back to the full approved set rather than returning
+  // nothing if every approved staging is marked niche.
   let approved = pool.filter(composition => composition.status === 'approved');
+  const broad = approved.filter(composition => composition.review?.breadth !== 'niche');
+  if (broad.length > 0) approved = broad;
   if (approved.length === 0) return [];
   if (mode) {
     const matching = approved.filter(composition => composition.surface === mode);
     if (matching.length === 0) return [];
     approved = matching;
   }
+  // Rating weights the draw exactly as it does for world challengers: a 3-star
+  // staging earns a second ticket, a 1-star marginal keep leaves the pool. This
+  // matters more here than for worlds because the per-surface pools are small,
+  // so an unweighted shuffle repeats a weak staging far more often.
+  // Each ticket carries its index so deterministicRank sees a distinct key per
+  // ticket; ranking bare duplicates would hash identically and the pick loop's
+  // id-dedupe would silently discard the second copy, making weighting a no-op.
+  const ticketsFor = pool => pool.flatMap(composition => {
+    const rating = composition.review?.rating;
+    if (rating === 1) return [];
+    return rating === 3
+      ? [{ composition, ticket: 0 }, { composition, ticket: 1 }]
+      : [{ composition, ticket: 0 }];
+  });
+
   const prior = new Set();
   let picks = [];
   for (let round = 0; round <= reroll; round += 1) {
     const available = approved.filter(composition => !prior.has(composition.id));
+    const base = available.length >= Math.min(count, approved.length) ? available : approved;
+    let tickets = ticketsFor(base);
+    // A pool of nothing but 1-star keeps still has to yield stagings.
+    if (tickets.length === 0) tickets = base.map(composition => ({ composition, ticket: 0 }));
     const ranked = deterministicRank(
-      available.length >= Math.min(count, approved.length) ? available : approved,
-      round === 0 ? `${scope}:${key}:staging` : `${scope}:${key}:staging:reroll-${round}`
-    );
+      tickets,
+      round === 0 ? `${scope}:${key}:staging` : `${scope}:${key}:staging:reroll-${round}`,
+      entry => `${entry.composition.id}#${entry.ticket}`
+    ).map(entry => entry.composition);
     const families = new Set();
     picks = [];
     for (const composition of ranked) {
@@ -271,12 +297,19 @@ export function selectApprovedChallengers({ scope, key, reroll = 0, sourceConcep
   // graphic systems beside instrument languages and atmosphere worlds, with
   // the second pick preferring a different family for diversity. Tier order
   // in the rendered list is rolled too, to avoid positional bias.
-  // Approval ratings weight the draw: a 3-star world earns a second ticket
-  // (roughly double odds), a 1-star keeps its approval for direct briefs but
-  // leaves the challenger pool unless a tier has nothing else.
+  // Two separate axes, and both can exclude. Rating grades quality: a 3-star
+  // earns a second ticket, a 1-star marginal keep leaves the pool. Breadth says
+  // whether a world can serve an arbitrary build at all, so a niche world
+  // leaves the pool however good it is. Breadth was split out of rating because
+  // the only way to hold a narrow world back used to be calling it marginal,
+  // which made "excellent but narrow" unrecordable and corrupted the ratings as
+  // a calibration signal for the next authoring round.
   const ticketsFor = pool => pool.flatMap(concept => {
     const rating = concept.review?.rating;
-    if (rating === 1) return [];
+    // Two independent exclusions: a marginal world is too weak to challenge,
+    // a niche world too narrow. Either one keeps its approval for direct
+    // briefs and leaves the pool.
+    if (rating === 1 || concept.review?.breadth === 'niche') return [];
     return rating === 3
       ? [{ concept, ticket: 0 }, { concept, ticket: 1 }]
       : [{ concept, ticket: 0 }];
@@ -458,7 +491,9 @@ ASSIGNED INDEX: ${buildIndex}
   The assignment exists to refuse the model's ranking rut, never to outrank
   the user or the brief. Never expose assignment metadata in user-facing labels.
 No challengers this run: the roll service was unreachable and no local
-catalog exists. A sandboxed shell without network egress is the most common
+catalog exists. A sandboxed exec tool with no network access causes exactly
+this; before accepting degradation, rerun this command once through the
+harness's network-enabled command tool. A sandboxed shell without network egress is the most common
 cause: if this harness can rerun the command with network access granted,
 do that once before proceeding. Otherwise proceed with the grounded
 candidates alone; the assignment
@@ -470,6 +505,8 @@ channel: when a browser can open, present the direction on the decision page
 the no-browser fallback.
 ${authorityInstruction}
 A user- or brief-pinned decision beats the roll, always.
+ASSIGNED INDEX (restated for truncated readers): ${buildIndex}. Build candidate
+${buildIndex} of your own grounded list; seed key ${key}.
 `;
   }
 
@@ -510,6 +547,8 @@ never as a mockup to copy; your surface serves this product, not that render.
 ${authorityInstruction}
 ${richnessInstruction}
 ${telemetryBlock}A user- or brief-pinned decision beats the roll, always.
+ASSIGNED INDEX (restated for truncated readers): ${buildIndex}. Build candidate
+${buildIndex} of your own grounded list; seed key ${key}.
 `;
 }
 

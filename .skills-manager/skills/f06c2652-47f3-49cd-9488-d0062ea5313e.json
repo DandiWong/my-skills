@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "f06c2652-47f3-49cd-9488-d0062ea5313e",
+  "path": "dsh-archive-agent-notes",
+  "path_key": "dsh-archive-agent-notes",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "local",
+    "ref": null,
+    "subpath": null,
+    "branch": null
+  }
+}

@@ -1,221 +1,74 @@
 ---
 name: fosunpharma-meeting-minutes
-description: "v0.3.9. MANDATORY: Generate formal Chinese meeting minutes (.docx) from meeting text, transcripts, chat notes, audio-transcription text, or files (.docx, .txt, .md). MUST be invoked via Skill tool whenever the task involves meeting minutes — even if the user does not explicitly say so. Trigger phrases include: 生成纪要, 生成会议纪要, 会议纪要, 总结会议纪要, 总结纪要, 整理会议记录, 整理纪要, 会议整理, 根据模板生成纪要, 把会议内容整理成纪要, 总结会议, 写纪要, 做纪要, meeting minutes, 转写原文, transcript to minutes, or ANY request to turn raw meeting content into a structured document. Also triggers when user provides a .txt file containing meeting transcript and asks to summarize or organize it."
-version: 0.3.9
+description: "v0.4.5. Generate formal Chinese meeting-minutes DOCX files from pasted text, transcripts, chat notes, audio-transcription text, or local .docx/.txt/.md files. Use this skill whenever the user asks to 生成会议纪要、整理会议记录、总结纪要、写纪要、根据模板或转写生成纪要, meeting minutes, meeting summary, or transcript-to-minutes, even if they do not name the skill. Supports 中山医院合作 and 复星医药内部会议纪要 templates."
+compatibility: "Requires Python 3.10+ and python-docx; LibreOffice is optional for visual QA."
+metadata:
+  version: "0.4.5"
 ---
 
-# Generate Meeting Minutes
+# 复星医药会议纪要生成
 
-Use this skill to turn raw meeting content into a polished Chinese `.docx` meeting-minutes file. This `SKILL.md` is the authority for content structure, writing rules, and meeting-minutes norms; the bundled `assets/reference.docx` is only the visual template for Word formatting and layout.
+把原始会议内容整理成简洁、正式的中文 `.docx` 会议纪要。使用本 skill 自带模板和生成脚本，不要重新实现 DOCX 排版。
 
-Version: `0.3.9`.
+## 内容与样式边界
 
-## Source-of-Truth Boundary
+- 本文件决定纪要结构、事实提取、归因、行动项和缺失信息处理。
+- `assets/*.docx` 只决定字体、标识、页眉页脚、页面布局和表格样式。
+- 模板占位文字与本文件冲突时，内容按本文件，样式按模板。
 
-Keep content rules and visual rules separate.
+## 输出要求
 
-- `SKILL.md` is authoritative for:
-  - meeting-minutes content structure and section order;
-  - what facts to extract;
-  - how to write participants, conclusions, speaker attribution, risks, and action items;
-  - how to handle missing facts, concision, traceability, and scope control.
-- `assets/reference.docx` is authoritative only for:
-  - Word styles and typography;
-  - title/heading/body visual formatting;
-  - header/footer/logo preservation;
-  - page layout and table visual styling;
-  - the 5-column action-item table layout.
-- Do not infer content requirements from placeholder text in `reference.docx`. If the template wording and this skill differ, follow this skill for content and use the template only for styling.
-- Keep template-derived formatting changes in scripts/assets. Keep content behavior changes in this `SKILL.md`.
+- 文件名：`{会议主题}_{参会单位A&参会单位B&...}_会议纪要_{yyyymmdd}.docx`（多方会议用 `&` 连接全部参会单位）。
+- 默认写入用户当前工作目录；用户指定目录时按其要求。
+- 不修改源文件。
+- 缺失的时间、地点、人员写 `【待补充】`，缺失期限写 `待确认`，不得编造。
+- 会议时间格式：`YYYY年M月D日 hh:mm-hh:mm`（如 `2026年7月23日 14:00-14:23`）。无法推算起止时间时写 `YYYY年M月D日 【待补充】`；连日期也无法确定时全写 `【待补充】`。
+- 删除寒暄、口头语、重复内容和非必要技术细节；每条要点最多两句话，确保非专业读者可理解。
 
-## Required Output
+## 模板选择
 
-- Create a Word document named `{会议主题}_{参会双方}_会议纪要_{yyyymmdd}.docx`. The filename is dynamically built from the JSON payload: `metadata.会议主题` + `metadata.参会单位` (units joined by `&`). Use the current local date unless the user explicitly requests another date. The `{yyyymmdd}` part must not contain hyphens.
-- Use `assets/reference.docx` as the base visual template. Its styles, header/footer logos, footer text, page layout, and table styling are authoritative for presentation only.
-- The generated document must follow this skill's three-line title block, styled according to the reference template:
-  - `{参会单位A}与{参会单位B}`
-  - `{会议主题}`
-  - `会议纪要`
-- The action-item table must follow the reference template's 5-column layout: `序号`、`行动项`、`具体内容`、`负责人`、`时间节点`.
-- Keep the source input intact. Write a new output file in the user's current working directory unless they specify another location.
-- If the meeting date/time/location is absent from the input, write `【待补充】` instead of inventing it.
+| 参数 | 模板 | 使用场景 |
+|---|---|---|
+| `zhongshan` | `assets/template_zhongshan.docx` | 与中山医院合作；页眉含复星医药与中山医院标识 |
+| `internal` | `assets/template_internal.docx` | 复星医药内部会议；页眉仅含复星医药标识 |
 
-## Workflow
+用户已说明场景时直接选择。场景不明确且模板会影响交付时，先询问用户。未传 `--template` 时默认 `zhongshan`；也可传任意 `.docx` 路径。
 
-1. Read the input.
-   - For pasted content, use it directly.
-   - For `.docx`, extract text with `python-docx`.
-   - For `.txt` or `.md`, read as UTF-8.
-   - If the user provides multiple files, use all relevant meeting-content files and ignore existing output/render artifacts unless requested.
+## 工作流
 
-2. Extract meeting facts.
-   - Meeting title/topic.
-   - Meeting time, location, units, host, and participants.
-   - Participant names, known roles, and known affiliations. When a prior template or reference file is provided, reuse only the titles and affiliations that are supported by the source.
-   - Main decisions, conclusions, disagreements, risks, and action items.
-   - Shared conclusions first, then speaker-attributed standalone opinions, judgments, concerns, proposals, and conclusions. Preserve the speaker name when the point is not a shared meeting consensus.
-   - Contract, commercial, compliance, IP, approval, deployment, and operations follow-ups, even when they are secondary to the main technical discussion.
+1. 读取全部会议素材。
+   - 粘贴文本：直接使用。
+   - `.txt` / `.md`：按 UTF-8 读取。
+   - `.docx`：用 `python-docx` 提取段落和表格文本。
+   - 多文件：合并相关内容，忽略旧输出和渲染产物，除非用户要求引用。
 
-3. Write concise formal minutes using the content structure defined in this skill. Apply `assets/reference.docx` styles to the generated content.
+2. 提取事实。
+   - 会议主题、时间、地点、参会单位、主持人和参与者。
+   - 决策、共识、个人观点、分歧、风险和行动项。
+   - 只沿用来源明确支持的单位、角色、职务和归属。
+   - 不遗漏合同、商务、合规、知识产权、审批、部署、数据安全、运维等后续事项。
+   - 会议时间推算优先级：
+     1. 素材正文中明确写出的日期和时间（如"2025年7月15日下午2点"）。
+     2. 上传文件名中包含的日期时间（如 `20250715_会议录音转写.txt`、`2025-07-15_腾讯会议记录.docx`）。
+     3. 以上均无法确定时标 `【待补充】`，不得编造。
 
-## Content Structure
+3. 组织正式纪要。
+   - 三行标题：
+     - `zhongshan`：第一行为参会单位组合——两方时 `{参会单位A}与{参会单位B}`；三方及以上时 `{单位A}、{单位B}与{单位C}`（依次用顿号连接，末尾用"与"连接最后一方）。第二行 `{会议主题}`，第三行 `会议纪要`。
+     - `internal`：`复星医药`、`{会议主题}`、`会议纪要`。
+   - 章节序号标准（三级层次）：
+     - 一级标题（section）：`一、` `二、` `三、` ...（中文数字+顿号），对应 Heading 2 样式。
+     - 二级标题（subsection）：`（一）` `（二）` `（三）` ...（中文数字+括号），对应 Heading 3 样式。
+     - 三级正文列举：`1.` `2.` `3.` ...（阿拉伯数字+点号），为正文段落内编号，不使用 Heading 样式。
+   - 固定章节（六章结构，不得重造编号）：
+     - `一、会议背景`：仅时间、地点、主要参会与发言人员、主持人，不写介绍性段落。由生成脚本自动渲染，JSON 中不包含此 section。
+     - `二、关键结论和共识`：本次会议达成的核心结论与各方一致认可的共识。
+     - `三、详细讨论要点`：按议题组织讨论内容，可使用 `（一）（二）` 子标题。
+     - `四、争议项`：各方存在分歧的议题，列举各方观点和最终结论。
+     - `五、下一步行动项`：5 列表格，由生成脚本自动渲染，JSON 中不包含此 section。
+     - `六、会议总结`：一到两段完整段落，面向管理层，不写技术细节，200 字以内，涵盖会议主题、核心结论及对项目的价值与后续方向。
 
-Use this structure for all generated minutes unless the user explicitly requests a different structure.
-
-1. Three-line title block:
-   - `{参会单位A}与{参会单位B}` when two or more participating sides are clear.
-   - `{参会单位A}` when only one participating side is clear; do not invent a second side.
-   - `{会议主题}`.
-   - `会议纪要`.
-2. `一、会议背景`
-   - `会议时间：...`
-   - `会议地点：...`
-   - `主要参会与发言人员`
-   - participant lines grouped by participating side, e.g. `复星医药：张三、李四` and `中山医院：王五、赵六`.
-   - concise background/purpose.
-   - Include `主持人：...` only when the host is explicit and useful for accountability; otherwise omit from content planning.
-3. `二、...` to `六、...`
-   - Use content-specific headings that reflect the meeting, such as `观点与结论`、`待确认事项`、`风险提示`、`关键决策`、`详细讨论要点`.
-   - Use Heading 2 for main sections and Heading 3 for subsections.
-   - Prefer outcome-oriented sections over transcript order.
-4. `七、下一步行动项`
-   - Use the 5-column action-item table: `序号`、`行动项`、`具体内容`、`负责人`、`时间节点`.
-5. `八、会议结论`
-   - Write a concise final conclusion and follow-up direction when available.
-
-## Writing and Condensing Rules
-
-When cleaning transcripts into formal minutes, reduce noise without erasing traceability.
-
-- Compress background aggressively: keep the meeting purpose, scope, and current state; remove greetings, scheduling chatter, repetition, and speech disfluencies.
-- Merge repeated points when multiple speakers are reinforcing the same conclusion. Present the merged point as a meeting consensus only when the transcript clearly shows agreement.
-- Prefer shared conclusions over speaker-by-speaker attribution when the discussion reaches the same landing point. Use `一致结论：...` for shared decisions, shared judgments, agreed next steps, or points accepted by the group.
-- Preserve speaker attribution for standalone or source-sensitive content:
-  - Use natural, neutral attribution when a point is an individual's independent view, risk judgment, proposal, objection, or conclusion.
-  - Do not convert an individual viewpoint into a collective conclusion unless other speakers explicitly agree or the meeting closes on that basis.
-  - For disputes or alternatives, identify who raised each option and summarize the resulting conclusion separately.
-- Reduce technical detail to decision-relevant substance:
-  - Keep key dependencies, assumptions, feasibility judgments, risks, and selected paths.
-  - Remove low-level reasoning steps unless they explain a decision, blocker, or action item.
-- Organize by outcome rather than by speaking order, except where source attribution is needed for accountability.
-- For a "精简版" or short minutes request, prefer compact sections such as `会议背景`、`核心共识`、`可行方向`、`待确认事项`、`风险提示`、`会议结论`. Keep the user's requested template and action table.
-- Keep language formal and finished. Avoid transcript filler such as `我觉得`、`反正`、`说白了` unless the wording itself is material; rewrite as concise business prose.
-- Use `待确认`, `尽快`, or `【待补充】` for missing facts. Do not invent dates, owners, locations, affiliations, or decisions.
-
-## Participant Formatting Rules
-
-Participant information should be useful for accountability without fabricating identity details.
-
-- If a participant's role/title/identity is not explicit in the source, list the name only. Do not add `【待补充】` inside parentheses and do not infer a title from context unless it is clearly stated.
-- If a participant's affiliation or participating side is clear, group participants by side using one line per side, for example `复星医药：张三、李四` and `中山医院：王五、赵六`.
-- If multiple participating sides are clear, use separate participant entries for each side so the generated document displays one line per side.
-- If only one side is clear, use one grouped entry for that side. Do not create a fake second side.
-- If a name is known but the side is not clear, list the person under `其他参会人员：姓名` or list the name alone if there is no need for grouping.
-- If a speaker label is only a room/device label and the actual person is unknown, do not list it as a participant unless the user maps the label to a person.
-- Keep roles only when explicit and useful, e.g. `复星医药：马君一、王建春（IT智能体平台产品经理）`. Avoid cluttering participant lines with uncertain or low-value identity text.
-
-## Speaker Attribution Style
-
-Speaker attribution is for traceability, not hierarchy. First decide whether the point is a shared conclusion; only use personal attribution when it remains source-specific.
-
-- Attribution priority:
-  1. If the group reaches the same conclusion, write `一致结论：...`. This is the preferred form.
-  2. If a point is not resolved, not agreed, or remains an individual's judgment, write it as a speaker-specific point.
-  3. If multiple speakers raised related but different points, group them under the topic and keep names only where the differences matter.
-- Use `一致结论：...` for consensus on direction, scope, decisions, next steps, risk treatment, or accepted assumptions. Do not repeat the same point again under individual speakers.
-- Do not force consensus. If the transcript only shows one person's view and no agreement, keep the speaker attribution.
-- If the conversation has both consensus and individual caveats, write the consensus first, then list the caveat with the speaker name.
-
-Keep the wording natural, objective, and equal.
-
-- Prefer concise colon or topic-first patterns:
-  - `张健：若目标是在 EDC 中直接配置 edit check，则需要先解决 CRF 标准化问题。`
-  - `关于产品形态，王建春关注两种可能：复星侧平台输出规则/报告，或院内工具辅助规则整理和导入。`
-  - `郑涧飞的看法是，下一步应先请院方一线接口人讲清实际流程。`
-- Avoid overly official or authority-heavy verbs such as `指出`、`明确`、`强调`、`提醒` when they are not necessary.
-- Do not overuse `提出`、`建议` in every bullet. If a section lists multiple speaker-specific points, the `姓名：观点` format is usually cleaner.
-- Use `认为` sparingly when it helps readability. Prefer describing the content directly over stacking reporting verbs.
-- Keep all speakers in the same tone; do not make one speaker sound like the decision-maker unless the transcript actually shows that role.
-
-## Action Item Preservation
-
-Action items are not just technical tasks. Always preserve follow-ups that move the project forward, including secondary but material items.
-
-- Always include contract, commercial, legal/compliance, confidentiality, IP, procurement, approval, deployment, data-security, operations, and maintenance follow-ups when mentioned.
-- Do not drop those items merely because the user asks for a concise or simplified version. Shorten the wording instead.
-- Merge action items only when they have the same owner, same timing, and same operational purpose. Otherwise keep them separate.
-- If an action has no explicit owner, infer only when the transcript clearly assigns responsibility; otherwise write `【待补充】`.
-- If an action has no explicit deadline, use `待确认` or a transcript-supported relative timing such as `会后尽快`、`下一次沟通前`、`院方澄清会后 1-2 周`.
-- In the `具体内容` column, keep enough context that the owner can execute the item without rereading the transcript.
-
-4. Prepare a JSON payload for `scripts/generate_minutes_docx.py`.
-   - Use clear, finished Chinese prose.
-   - Keep bullets specific and attributable where useful.
-   - Do not include raw transcript filler, repeated greetings, or speech disfluencies.
-   - Use `待确认`, `尽快`, or `【待补充】` when deadlines or facts are not in the source.
-   - In `participants`, group by participating side when affiliation is clear, and omit uncertain identities/roles.
-   - In `sections`, write shared conclusions first as `一致结论：...`; include speaker names only for independent opinions or unresolved conclusions using natural attribution, for example `张健：...` or `关于...，郑涧飞的看法是...`.
-   - In `actions`, retain contract/commercial/compliance/IP/deployment/operations follow-ups even in concise versions.
-   - For action items, prefer the current 5-field shape (`序号`, `行动项`, `具体内容`, `负责人`, `时间节点`). The generator still accepts the older 7-field shape and maps it into the reference table.
-   - Treat the frontmatter `version` field as the release version source of truth for distribution metadata.
-   - Treat the JSON payload as a temporary build artifact, not a deliverable. Write it under the system temp directory by default and remove it after the DOCX is generated successfully. Keep it only when the user asks for debug artifacts or when generation fails and the JSON is needed for troubleshooting.
-
-   Recommended temporary-file workflow:
-
-   ```bash
-   tmp_dir="$(mktemp -d)"
-   json_path="$tmp_dir/minutes.json"
-   # Write the structured JSON payload to "$json_path".
-   ```
-
-   If a generated JSON file fails to parse because Chinese prose contains unescaped inner quotes, run the quote repair helper before generating the DOCX:
-
-   ```bash
-   python ./scripts/repair_json_quotes.py "$json_path" --write
-   ```
-
-   The helper preserves existing Chinese fullwidth quotes, converts inner halfwidth ASCII quotes and common prose punctuation inside JSON string values to Chinese fullwidth punctuation, preserves structured formats such as times, numeric groupings, ratios, and URLs, validates the repaired JSON, and creates a timestamped `.bak` backup unless `--no-backup` is passed.
-
-5. Check the local Python runtime before generating on a new device or when dependency errors appear.
-
-```bash
-python ./scripts/check_env.py
-```
-
-If `python-docx` is missing, do not silently install it. Tell the user to run:
-
-```bash
-python -m pip install -r requirements.txt
-```
-
-6. Run the generator script with the bundled template.
-
-```bash
-python ./scripts/generate_minutes_docx.py \
-  --json "$json_path" \
-  --output-dir . \
-  --date YYYY-MM-DD
-```
-
-The script defaults to `../assets/reference.docx` and outputs `{会议主题}_{参会双方}_会议纪要_<yyyymmdd>.docx` built from the JSON payload.
-
-After a successful DOCX generation, delete the temporary directory unless debug artifacts are intentionally being retained:
-
-```bash
-rm -rf "$tmp_dir"
-```
-
-7. Optionally render and visually verify the DOCX.
-   - Only if `LibreOffice` (`soffice`) or a DOCX render tool is available on the system:
-     ```bash
-     which soffice && soffice --headless --convert-to pdf "<output>.docx" --outdir minutes_render
-     ```
-   - Inspect rendered pages for missing logos, text clipping, overlapping text, table overflow, and broken page breaks.
-   - If rendering tools are unavailable, still deliver the DOCX and mention that visual render QA could not be completed.
-
-## JSON Shape
-
-Use this shape for the generator:
+4. 创建临时 JSON。使用已完成的正式表述，不要把原始转写直接塞进字段。
 
 ```json
 {
@@ -224,36 +77,30 @@ Use this shape for the generator:
     "会议主题": "项目沟通会",
     "会议时间": "【待补充】",
     "会议地点": "线上会议",
-    "参会单位": "单位一，单位二",
+    "参会单位": "单位一，单位二，单位三",
     "主持人": "姓名"
   },
-  "participants": [
-    "单位一：姓名、姓名",
-    "单位二：姓名、姓名"
-  ],
+  "participants": ["单位一：姓名（职务）、姓名", "单位二：姓名（职务）、姓名", "单位三：姓名"],
   "sections": [
     {
-      "heading": "二、关键决策与核心结论",
-      "items": ["结论一", "结论二"]
+      "heading": "二、关键结论和共识",
+      "items": ["一致结论：按行动项推进。"]
     },
     {
       "heading": "三、详细讨论要点",
       "subsections": [
-        {
-          "heading": "1. 议题一",
-          "items": ["要点一", "要点二"]
-        }
+        {"heading": "（一）议题一", "items": ["1. 要点一", "2. 要点二"]}
       ]
     },
     {
-      "heading": "四、争议 / 重点异议及结论",
+      "heading": "四、争议项",
       "items": [
-        {"topic": "争议点", "discussion": "讨论摘要", "conclusion": "结论"}
+        {"topic": "（一）争议点", "viewpoints": ["A方：观点一", "B方：观点二"], "conclusion": "结论"}
       ]
     },
     {
-      "heading": "八、会议结论",
-      "items": ["会议结论一", "后续展望一"]
+      "heading": "六、会议总结",
+      "items": ["本次会议各方就……达成共识，明确了……。本次会议为……奠定了基础。"]
     }
   ],
   "actions": [
@@ -268,27 +115,89 @@ Use this shape for the generator:
 }
 ```
 
-Older action JSON is still accepted and will be mapped into the reference table:
+旧版 7 字段行动项仍兼容：`编号`、`待办事项`、`讨论背景`、`下一步/输出`、`负责人`、`截止时间`、`状态`。
 
-```json
-{
-  "actions": [
-    {
-      "编号": "1",
-      "待办事项": "事项",
-      "讨论背景": "背景",
-      "下一步/输出": "输出",
-      "负责人": "负责人",
-      "截止时间": "待确认",
-      "状态": "待执行"
-    }
-  ]
-}
+将 JSON 放在系统临时目录，生成成功后删除；只在用户要求调试或生成失败时保留。
+
+```bash
+tmp_dir="$(mktemp -d)"
+json_path="$tmp_dir/minutes.json"
 ```
 
-## Bundled Resources
+若生成的中文 JSON 因字符串内半角引号而无法解析，先修复：
 
-- `assets/reference.docx`: required Word template. Use it as the base document.
-- `scripts/generate_minutes_docx.py`: deterministic DOCX builder that clears placeholder body content from the template, inserts structured minutes, formats the action table, and names the output file.
-- `scripts/check_env.py`: dependency checker for Python and `python-docx`; it reports installation commands but does not install anything automatically.
-- `scripts/repair_json_quotes.py`: JSON repair helper for generated minutes payloads that contain unescaped inner quotes in Chinese prose.
+```bash
+python <skill-dir>/scripts/repair_json_quotes.py "$json_path" --write
+```
+
+5. 首次运行或依赖报错时检查环境：
+
+```bash
+python <skill-dir>/scripts/check_env.py
+```
+
+若缺少 `python-docx`，告知用户运行：
+
+```bash
+python -m pip install -r <skill-dir>/requirements.txt
+```
+
+不要静默安装依赖。
+
+6. 生成 DOCX：
+
+```bash
+python <skill-dir>/scripts/generate_minutes_docx.py \
+  --json "$json_path" \
+  --template zhongshan \
+  --output-dir . \
+  --date YYYY-MM-DD
+```
+
+成功后删除临时目录。不要删除用户提供的文件或用户要求保留的调试材料。
+
+7. 如系统有 LibreOffice 或 DOCX 渲染器，渲染并逐页检查标识、字体、表格、分页、裁切和重叠。没有渲染工具时仍可交付，但说明未完成视觉 QA。
+
+## 写作与归因规则
+
+- 先写会议共识，再写独立观点、异议或保留意见。
+- 只有来源明确显示共同接受时才写 `一致结论：...`；不要把个人判断包装成集体结论。
+- 独立观点用自然、平等的表达，如 `张三：...` 或 `关于产品形态，李四关注...`。
+- 少用 `指出`、`强调`、`明确` 等权威化动词，不因职位改变语气。
+- 技术内容只保留影响决策的依赖、假设、可行性、风险和选定路径。
+- 精简版仍保留重要风险和非技术行动项，只压缩措辞。
+- 正文数字序号规则：一级标题用 `一、二、三、`，二级标题用 `（一）（二）（三）`，三级正文列举用 `1. 2. 3.`。各章节（行动项表格和会议结论除外）的正文中，如果存在情况列举（多个并列要点、方案选项、分条说明等），用三级数字序号标注，每条单独成段；单一陈述句无需编号。
+- 争议项格式：争议项章节中每个争议点用 `（一）（二）` 编号，先列举各方观点（不加数字序号，直接 `A方：观点` `B方：观点` 各自成段），再写结论。不使用"谁指派谁""谁要求谁"等表述，只客观列举各方立场和最终结论。
+- 会议总结格式：`六、会议总结` 用一到两段完整段落撰写，面向管理层，不写技术细节，200 字以内，涵盖本次会议的主题、核心结论及对整个项目的价值与意义，不使用序号列举。
+
+## 参会人员规则
+
+- `zhongshan`：按利益方（参会单位）分行列出，如 `复星医药：张三（产品经理）、李四`、`中山医院：王五（科室主任）`；三方及以上同理，每方一行。多方参会时各行缩进显示（与"主要参会与发言人员"标题形成层级）。
+- `internal`：用一行 `参会人员：...`，不按甲方、乙方拆分。
+- 有明确 title 的参会人员用人名+title，格式为 `姓名（职务/Title）`，如 `张三（产品经理）`；title 不明确时只写姓名，不添加猜测或括号内的 `【待补充】`。
+- 房间号、设备名等标签不作为人名，除非用户提供映射。
+- 主持人缺失时不输出主持人占位行。
+- 不确定的发言人名字可通过文中对话的相互称呼来交叉确认：例如转写中出现"张主任您看"，可据此将发言人"张某"确认为"张三（主任）"；无法确认时保留原文中的称呼或标 `【待补充】`，不得编造姓名。
+
+## 行动项规则
+
+- `具体内容` 应足以让负责人无需重读转写即可执行，只写具体任务本身，不附对话依据或括号备注。
+- 仅当负责人、期限和目的相同时合并行动项。
+- 负责人推断：根据对话互动分析真正的负责人，而非简单归给提出话题的人。关注以下线索：
+  1. 某方主动认领任务（如"我们再理一下""我们先看一下"）。
+  2. 上级指派下级执行（如"翟成成你看一下怎么配"→负责人为翟成成）。
+  3. 提出需求的一方通常负责准备和提交，提供资源的一方负责配合和回复。
+  4. 对话中未明确认领且无法推断时写 `【待补充】`。
+- 负责人不明确写 `【待补充】`；期限不明确写 `待确认`，或使用来源支持的相对期限。
+- 合同、商务、法务/合规、保密、知识产权、采购、审批、部署、数据安全、运维事项即使次要也应保留。
+- 不将元任务（如输出会议纪要、梳理问题清单发群等流程性事项）列为行动项，只保留与项目交付直接相关的实质任务。
+
+## 捆绑资源
+
+- `assets/template_zhongshan.docx`
+- `assets/template_internal.docx`
+- `scripts/generate_minutes_docx.py`
+- `scripts/check_env.py`
+- `scripts/repair_json_quotes.py`
+- `tests/test_generate_minutes_docx.py`
+- `tests/test_repair_json_quotes.py`

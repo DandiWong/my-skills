@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "763612f0-e412-4a75-a668-6a9257ee341c",
+  "path": "dsh-find-simplifications",
+  "path_key": "dsh-find-simplifications",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "local",
+    "ref": null,
+    "subpath": null,
+    "branch": null
+  }
+}

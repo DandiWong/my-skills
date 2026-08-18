@@ -10,7 +10,8 @@ from docx import Document
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "generate_minutes_docx.py"
-REFERENCE = ROOT / "assets" / "reference.docx"
+ZHONGSHAN = ROOT / "assets" / "template_zhongshan.docx"
+INTERNAL = ROOT / "assets" / "template_internal.docx"
 SKILL_MD = ROOT / "SKILL.md"
 MANIFEST = ROOT / "manifest.json"
 CHECK_ENV = ROOT / "scripts" / "check_env.py"
@@ -35,26 +36,24 @@ def first_run_with_text(paragraph):
     return next(run for run in paragraph.runs if run.text.strip())
 
 
-def run_generator(payload):
+def run_generator(payload, template=None):
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         json_path = tmp_path / "minutes.json"
         json_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
-        result = subprocess.run(
-            [
-                sys.executable,
-                str(SCRIPT),
-                "--json",
-                str(json_path),
-                "--output-dir",
-                str(tmp_path),
-                "--date",
-                "2026-06-11",
-            ],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
+        command = [
+            sys.executable,
+            str(SCRIPT),
+            "--json",
+            str(json_path),
+            "--output-dir",
+            str(tmp_path),
+            "--date",
+            "2026-06-11",
+        ]
+        if template:
+            command.extend(["--template", str(template)])
+        result = subprocess.run(command, check=True, capture_output=True, text=True)
         return Document(Path(result.stdout.strip()))
 
 
@@ -71,23 +70,26 @@ class GenerateMinutesDocxTests(unittest.TestCase):
             },
             "participants": ["张三（复星医药/项目负责人）", "李四（合作方/技术负责人）"],
             "sections": [
-                {"heading": "一、会议目的", "items": ["对齐项目推进目标与后续输出。"]},
-                {"heading": "二、关键决策与核心结论", "items": ["双方确认后续以纪要待办表跟踪事项。"]},
+                {"heading": "二、关键结论和共识", "items": ["双方确认后续以纪要待办表跟踪事项。"]},
                 {
                     "heading": "三、详细讨论要点",
                     "subsections": [
-                        {"heading": "1. 项目范围", "items": ["需进一步补充业务范围边界。"]}
+                        {"heading": "（一）项目范围", "items": ["1. 需进一步补充业务范围边界。"]}
                     ],
                 },
                 {
-                    "heading": "四、争议 / 重点异议及结论",
+                    "heading": "四、争议项",
                     "items": [
                         {
-                            "topic": "时间安排",
-                            "discussion": "双方讨论交付节奏。",
+                            "topic": "（一）时间安排",
+                            "viewpoints": ["复星医药：期望两周内完成交付。", "合作方：建议三周以确保质量。"],
                             "conclusion": "截止时间待确认。",
                         }
                     ],
+                },
+                {
+                    "heading": "六、会议总结",
+                    "items": ["本次会议双方就项目推进达成共识，明确了后续分工与交付节奏。"],
                 },
             ],
             "actions": [
@@ -104,7 +106,7 @@ class GenerateMinutesDocxTests(unittest.TestCase):
         }
 
     def test_generated_paragraph_styles_follow_reference_docx(self):
-        reference = Document(REFERENCE)
+        reference = Document(ZHONGSHAN)
         generated = run_generator(self.sample_payload())
 
         self.assertEqual([p.style.name for p in generated.paragraphs[:3]], ["Heading 1"] * 3)
@@ -123,7 +125,7 @@ class GenerateMinutesDocxTests(unittest.TestCase):
             self.assertEqual(generated_run.font.size, reference_run.font.size)
 
     def test_action_table_layout_uses_reference_headers_and_legacy_mapping(self):
-        reference = Document(REFERENCE)
+        reference = Document(ZHONGSHAN)
         generated = run_generator(self.sample_payload())
 
         reference_headers = [cell.text for cell in reference.tables[0].rows[0].cells]
@@ -141,8 +143,47 @@ class GenerateMinutesDocxTests(unittest.TestCase):
         frontmatter = read_frontmatter(SKILL_MD)
 
         self.assertEqual(frontmatter["name"], "fosunpharma-meeting-minutes")
-        self.assertEqual(frontmatter["version"], "0.3.9")
-        self.assertIn("v0.3.9", frontmatter["description"])
+        self.assertEqual(frontmatter["version"], "0.4.5")
+        self.assertIn("v0.4.5", frontmatter["description"])
+
+    def test_named_and_path_templates_preserve_expected_header_logos(self):
+        payload = self.sample_payload()
+
+        self.assertEqual(len(run_generator(payload, "zhongshan").sections[0].header._element.xpath(".//a:blip")), 2)
+        self.assertEqual(len(run_generator(payload, "internal").sections[0].header._element.xpath(".//a:blip")), 1)
+        self.assertEqual(len(run_generator(payload, INTERNAL).sections[0].header._element.xpath(".//a:blip")), 1)
+
+    def test_internal_template_uses_single_organization_title_and_participant_list(self):
+        generated = run_generator(self.sample_payload(), "internal")
+        paragraphs = [p.text for p in generated.paragraphs if p.text.strip()]
+
+        self.assertEqual(generated.paragraphs[0].text, "复星医药")
+        self.assertIn(
+            "参会人员：张三（复星医药/项目负责人）；李四（合作方/技术负责人）",
+            paragraphs,
+        )
+        self.assertNotIn("甲方", "\n".join(paragraphs))
+        self.assertNotIn("乙方", "\n".join(paragraphs))
+
+    def test_missing_template_exits_with_clear_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            json_path = Path(tmp) / "minutes.json"
+            json_path.write_text(json.dumps(self.sample_payload(), ensure_ascii=False), encoding="utf-8")
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    "--json",
+                    str(json_path),
+                    "--template",
+                    "missing-template",
+                ],
+                capture_output=True,
+                text=True,
+            )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("not found", result.stderr)
 
     def test_participants_are_written_as_separate_lines_and_unknown_host_is_omitted(self):
         payload = self.sample_payload()
@@ -159,6 +200,18 @@ class GenerateMinutesDocxTests(unittest.TestCase):
         self.assertIn("复星医药：张三、李四", paragraphs)
         self.assertIn("中山医院：王五、赵六", paragraphs)
         self.assertNotIn("主持人：【待补充】", paragraphs)
+
+    def test_multi_party_title_joins_three_or_more_units(self):
+        payload = self.sample_payload()
+        payload["metadata"]["参会单位"] = "复星医药，中山医院，语言桥"
+        payload["participants"] = [
+            "复星医药：张三（产品经理）",
+            "中山医院：王五（科室主任）",
+            "语言桥：赵六",
+        ]
+
+        generated = run_generator(payload)
+        self.assertEqual(generated.paragraphs[0].text, "复星医药、中山医院与语言桥")
 
     def test_manifest_matches_skill_frontmatter_and_declared_files_exist(self):
         frontmatter = read_frontmatter(SKILL_MD)
@@ -182,6 +235,44 @@ class GenerateMinutesDocxTests(unittest.TestCase):
 
         self.assertIn("python:", result.stdout)
         self.assertIn("python-docx: OK", result.stdout)
+
+    def test_viewpoints_are_rendered_without_numbering(self):
+        generated = run_generator(self.sample_payload())
+        paragraphs = [p.text for p in generated.paragraphs if p.text.strip()]
+
+        self.assertIn("复星医药：期望两周内完成交付。", paragraphs)
+        self.assertIn("合作方：建议三周以确保质量。", paragraphs)
+        self.assertNotIn("1. 复星医药：期望两周内完成交付。", paragraphs)
+        self.assertNotIn("2. 合作方：建议三周以确保质量。", paragraphs)
+        self.assertIn("结论：截止时间待确认。", paragraphs)
+
+    def test_table_columns_fill_content_width(self):
+        from docx.oxml.ns import qn as _qn
+
+        generated = run_generator(self.sample_payload())
+        section = generated.sections[0]
+        content_width = section.page_width.twips - section.left_margin.twips - section.right_margin.twips
+
+        table = generated.tables[0]
+        grid = table._tbl.tblGrid
+        cols = grid.findall(_qn("w:gridCol"))
+        widths = [int(col.get(_qn("w:w"))) for col in cols]
+        self.assertEqual(sum(widths), content_width)
+
+    def test_section_one_is_skipped_and_six_is_last(self):
+        payload = self.sample_payload()
+        payload["sections"] = [
+            {"heading": "一、会议目的", "items": ["should not appear"]},
+            {"heading": "二、关键结论和共识", "items": ["content"]},
+            {"heading": "六、会议总结", "items": ["conclusion paragraph"]},
+        ]
+        generated = run_generator(payload)
+        headings = [p.text for p in generated.paragraphs if p.style and p.style.name == "Heading 2"]
+
+        self.assertNotIn("一、会议目的", headings)
+        self.assertEqual(headings[0], "一、会议背景")
+        self.assertEqual(headings[-1], "六、会议总结")
+        self.assertEqual(headings[-2], "五、下一步行动项")
 
 
 if __name__ == "__main__":

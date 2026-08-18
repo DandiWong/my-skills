@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "995ac089-2acc-41e6-8e9a-c910e1e871b0",
+  "path": "record-browser-gif",
+  "path_key": "record-browser-gif",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "local",
+    "ref": null,
+    "subpath": null,
+    "branch": null
+  }
+}

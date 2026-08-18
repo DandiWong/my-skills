@@ -20,11 +20,27 @@ from docx.shared import Pt
 
 
 SKILL_DIR = Path(__file__).resolve().parents[1]
-DEFAULT_TEMPLATE = SKILL_DIR / "assets" / "reference.docx"
+ASSETS_DIR = SKILL_DIR / "assets"
+TEMPLATE_MAP = {
+    "zhongshan": ASSETS_DIR / "template_zhongshan.docx",
+    "internal": ASSETS_DIR / "template_internal.docx",
+}
+DEFAULT_TEMPLATE_NAME = "zhongshan"
 TITLE_STYLE = "Heading 1"
 SECTION_STYLE = "Heading 2"
 SUBSECTION_STYLE = "Heading 3"
 BODY_STYLE = "Normal (Web)"
+
+
+def resolve_template(value: str) -> Path:
+    template = TEMPLATE_MAP.get(value.lower().strip(), Path(value))
+    if template.is_file():
+        return template
+    choices = ", ".join(TEMPLATE_MAP)
+    raise SystemExit(
+        f"Template '{value}' not found. Use one of: {choices}; "
+        "or provide a valid .docx path."
+    )
 
 
 def text_run(paragraph):
@@ -61,7 +77,7 @@ def capture_profiles(document: Document) -> dict[str, dict[str, Any]]:
 
 
 def apply_run_format(run, profile: dict[str, Any]) -> None:
-    run_format = profile.get("run") or {}
+    run_format = profile.get("run") or profile
     font_name = run_format.get("font_name")
     if font_name:
         run.font.name = font_name
@@ -106,9 +122,11 @@ def add_heading(document: Document, text: str, level: int, profiles: dict[str, d
     set_para(p, text, profiles[style])
 
 
-def add_body_item(document: Document, text: str, profiles: dict[str, dict[str, Any]]) -> None:
+def add_body_item(document: Document, text: str, profiles: dict[str, dict[str, Any]], indent: bool = False) -> None:
     p = document.add_paragraph(style=BODY_STYLE)
     set_para(p, text, profiles[BODY_STYLE])
+    if indent:
+        p.paragraph_format.left_indent = Pt(24)
 
 
 def normalize_filename_date(value: str | None) -> str:
@@ -141,7 +159,9 @@ def split_units(units_raw: str) -> list[str]:
 
 def title_units(metadata: dict[str, Any]) -> str:
     units = split_units(str(metadata.get("参会单位") or ""))
-    if len(units) >= 2:
+    if len(units) >= 3:
+        return "、".join(units[:-1]) + f"与{units[-1]}"
+    if len(units) == 2:
         return f"{units[0]}与{units[1]}"
     if len(units) == 1:
         return units[0]
@@ -157,19 +177,33 @@ def title_topic(minutes: dict[str, Any]) -> str:
     return re.sub(r"会议纪要$", "", title) or "会议"
 
 
-def add_metadata(document: Document, minutes: dict[str, Any], profiles: dict[str, dict[str, Any]]) -> None:
+def add_metadata(
+    document: Document,
+    minutes: dict[str, Any],
+    profiles: dict[str, dict[str, Any]],
+    internal: bool = False,
+) -> None:
     metadata = minutes.get("metadata") or {}
-    for line in [title_units(metadata), title_topic(minutes), "会议纪要"]:
+    organization = "复星医药" if internal else title_units(metadata)
+    for line in [organization, title_topic(minutes), "会议纪要"]:
         p = document.add_paragraph(style=TITLE_STYLE)
         set_para(p, line, profiles[TITLE_STYLE])
+        pf = p.paragraph_format
+        pf.space_before = Pt(8.5)
+        pf.space_after = Pt(8.25)
+        pf.line_spacing = 1.0
 
     add_heading(document, "一、会议背景", 1, profiles)
     add_body_item(document, f"会议时间：{metadata.get('会议时间', '【待补充】')}", profiles)
     add_body_item(document, f"会议地点：{metadata.get('会议地点', '【待补充】')}", profiles)
     add_body_item(document, "主要参会与发言人员", profiles)
     participants = [str(person) for person in minutes.get("participants") or ["【待补充】"]]
-    for person in participants:
-        add_body_item(document, person, profiles)
+    if internal:
+        add_body_item(document, f"参会人员：{'；'.join(participants)}", profiles)
+    else:
+        multi_party = len(participants) > 1
+        for person in participants:
+            add_body_item(document, person, profiles, indent=multi_party)
     host = str(metadata.get("主持人") or "").strip()
     if host and host not in {"【待补充】", "待补充", "待确认"}:
         add_body_item(document, f"主持人：{host}", profiles)
@@ -184,6 +218,7 @@ def add_sections(document: Document, sections: list[dict[str, Any]], profiles: d
         for item in section.get("items") or []:
             if isinstance(item, dict):
                 topic = item.get("topic")
+                viewpoints = item.get("viewpoints") or []
                 discussion = item.get("discussion")
                 conclusion = item.get("conclusion")
                 if topic:
@@ -191,7 +226,10 @@ def add_sections(document: Document, sections: list[dict[str, Any]], profiles: d
                     set_para(p, str(topic), profiles[BODY_STYLE])
                     for run in p.runs:
                         run.bold = True
-                if discussion:
+                if viewpoints:
+                    for vp in viewpoints:
+                        add_body_item(document, str(vp), profiles)
+                elif discussion:
                     add_body_item(document, f"讨论：{discussion}", profiles)
                 if conclusion:
                     add_body_item(document, f"结论：{conclusion}", profiles)
@@ -207,10 +245,13 @@ def add_sections(document: Document, sections: list[dict[str, Any]], profiles: d
 
 
 def reference_table_profile(document: Document) -> dict[str, Any]:
+    section = document.sections[0]
+    content_width = section.page_width.twips - section.left_margin.twips - section.right_margin.twips
     if not document.tables:
         return {
             "headers": ["序号", "行动项", "具体内容", "负责人", "时间节点"],
-            "widths": [704, 2340, 5036, 1185, 1500],
+            "widths": [800, 2800, 4160, 1200, 1500],
+            "content_width": content_width,
             "style": "Table Grid",
             "header": {"font_name": "仿宋", "bold": True},
             "body": {"font_name": "仿宋"},
@@ -226,30 +267,57 @@ def reference_table_profile(document: Document) -> dict[str, Any]:
     return {
         "headers": headers,
         "widths": widths,
+        "content_width": content_width,
         "style": table.style.name,
         "header": capture_run_format(header_run) if header_run else {},
         "body": capture_run_format(body_run) if body_run else {},
     }
 
 
-def apply_cell_run_format(run, run_format: dict[str, Any]) -> None:
-    font_name = run_format.get("font_name")
-    if font_name:
-        run.font.name = font_name
-        r_pr = run._element.get_or_add_rPr()
-        r_fonts = r_pr.rFonts
-        if r_fonts is None:
-            r_fonts = OxmlElement("w:rFonts")
-            r_pr.append(r_fonts)
-        r_fonts.set(qn("w:eastAsia"), font_name)
-    if run_format.get("size") is not None:
-        run.font.size = run_format["size"]
-    if run_format.get("bold") is not None:
-        run.bold = run_format["bold"]
+def normalize_table_widths(widths: list[int], content_width: int, headers: list[str]) -> list[int]:
+    """Scale column widths to fill content width, ensuring minimum widths to avoid awkward wrapping."""
+    n = len(widths)
+    char_width = 240  # approx twips per Chinese char at 12pt
+    cell_padding = 120  # 60 twips per side
+
+    # Minimum width per column: enough for header text + padding, at least 700 twips
+    min_widths = [max(len(str(h)) * char_width + cell_padding, 700) for h in headers]
+
+    # Replace zero widths with their minimum
+    widths = [w if w > 0 else min_widths[i] for i, w in enumerate(widths)]
+
+    # Scale proportionally to fill content width
+    total = sum(widths)
+    if total > 0:
+        scale = content_width / total
+        widths = [int(w * scale) for w in widths]
+
+    # Enforce minimums: pull deficit from the widest column
+    for i in range(n):
+        if widths[i] < min_widths[i]:
+            deficit = min_widths[i] - widths[i]
+            widths[i] = min_widths[i]
+            max_idx = max(range(n), key=lambda k: widths[k])
+            if max_idx != i:
+                widths[max_idx] -= deficit
+
+    # Fix rounding to exactly match content_width
+    diff = content_width - sum(widths)
+    if diff != 0 and widths:
+        widths[-1] += diff
+
+    return widths
 
 
 def set_table_geometry(table, table_profile: dict[str, Any]) -> None:
-    widths = table_profile["widths"]
+    headers = table_profile["headers"]
+    content_width = table_profile.get("content_width", 0)
+    raw_widths = table_profile["widths"]
+    if content_width > 0:
+        widths = normalize_table_widths(raw_widths, content_width, headers)
+    else:
+        widths = raw_widths
+    table_profile["widths"] = widths
     tbl = table._tbl
     tbl_pr = tbl.tblPr
 
@@ -308,7 +376,7 @@ def set_table_geometry(table, table_profile: dict[str, Any]) -> None:
                 p.paragraph_format.line_spacing = 1.0
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER if row_index == 0 or col_index == 0 else WD_ALIGN_PARAGRAPH.LEFT
                 for run in p.runs:
-                    apply_cell_run_format(run, table_profile["header" if row_index == 0 else "body"])
+                    apply_run_format(run, table_profile["header" if row_index == 0 else "body"])
 
 
 def action_value(action: dict[str, Any], *keys: str) -> str:
@@ -342,7 +410,13 @@ def add_actions(
     profiles: dict[str, dict[str, Any]],
     table_profile: dict[str, Any],
 ) -> None:
-    add_heading(document, "七、下一步行动项", 1, profiles)
+    add_heading(document, "五、下一步行动项", 1, profiles)
+    # Use body text font/size for table cells to maintain visual consistency
+    body_run_format = profiles[BODY_STYLE].get("run") or {}
+    table_profile["body"] = body_run_format
+    header_run_format = dict(body_run_format)
+    header_run_format["bold"] = True
+    table_profile["header"] = header_run_format
     headers = table_profile["headers"]
     table = document.add_table(rows=1, cols=len(headers))
     table.style = table_profile["style"]
@@ -354,7 +428,7 @@ def add_actions(
             "行动项": "【待补充】",
             "具体内容": "【待补充】",
             "负责人": "【待补充】",
-            "时间节点": "【待补充】",
+            "时间节点": "待确认",
         }]
     for index, action in enumerate(actions, start=1):
         cells = table.add_row().cells
@@ -373,18 +447,28 @@ def add_actions(
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--json", required=True, type=Path, help="Path to structured minutes JSON")
-    parser.add_argument("--template", default=DEFAULT_TEMPLATE, type=Path, help="Reference DOCX template")
+    parser.add_argument(
+        "--template",
+        default=DEFAULT_TEMPLATE_NAME,
+        help="Named template (zhongshan or internal) or a .docx path; defaults to zhongshan",
+    )
     parser.add_argument("--output-dir", default=Path.cwd(), type=Path, help="Output directory")
     parser.add_argument("--date", default=None, help="Output date in YYYY-MM-DD; defaults to today")
     parser.add_argument("--output-name", default=None, help="Optional explicit output filename")
     args = parser.parse_args()
 
     minutes = json.loads(args.json.read_text(encoding="utf-8"))
-    document = Document(args.template)
+    template_path = resolve_template(args.template)
+    document = Document(template_path)
     profiles = capture_profiles(document)
     table_profile = reference_table_profile(document)
     clear_body(document)
-    add_metadata(document, minutes, profiles)
+    add_metadata(
+        document,
+        minutes,
+        profiles,
+        internal=template_path.resolve() == TEMPLATE_MAP["internal"].resolve(),
+    )
 
     sections = deepcopy(minutes.get("sections") or [])
     actions = minutes.get("actions") or []
@@ -392,9 +476,9 @@ def main() -> None:
     conclusion_sections = []
     for section in sections:
         heading = str(section.get("heading", ""))
-        if heading.startswith(("七", "五、待办")):
+        if heading.startswith(("一", "五", "七")) or "下一步行动项" in heading or "待办" in heading:
             continue
-        if heading.startswith("八") or "会议结论" in heading:
+        if heading.startswith("六") or heading.startswith("八") or "会议总结" in heading or "会议结论" in heading:
             conclusion_sections.append(section)
         else:
             content_sections.append(section)

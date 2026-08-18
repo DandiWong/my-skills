@@ -409,13 +409,18 @@ public partial class WordHandler
                 // with embedded \n loses the break on dump readback. Skip
                 // page/column breaks — they have no \n source representation
                 // and a paragraph-level `break` property already captures them.
+                // NEWLINE-SEMANTICS-V2: soft line breaks read back as '\v'
+                // (Word object model Chr(11)); '\n' now denotes a paragraph
+                // boundary at block level, so a break must not masquerade as
+                // one. AppendTextWithBreaks accepts '\v' (and legacy '\n' in
+                // run scope) back into <w:br/> for the dump round-trip.
                 case Break br when br.Type == null || br.Type.Value == BreakValues.TextWrapping:
-                    sb.Append('\n'); break;
+                    sb.Append('\v'); break;
                 // BUG-R10A(BUG1): <w:cr/> (CarriageReturn) is a line break too —
                 // same visual effect as a textWrapping <w:br/>. Without this case
                 // GetRunText dropped it and adjacent text merged ("A"+"B" → "AB")
                 // on dump readback. Map to \n so it round-trips through a <w:br/>.
-                case CarriageReturn: sb.Append('\n'); break;
+                case CarriageReturn: sb.Append('\v'); break;
                 // BUG-DUMP7-01: <w:sym w:font="Wingdings" w:char="F0E0"/> is a
                 // glyph substitution — the run carries no <w:t>. Without a case
                 // here, GetRunText returned empty and WordBatchEmitter's run-emit

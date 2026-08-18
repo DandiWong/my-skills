@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "8f33fe2a-c3b2-4844-b439-65019961e5bb",
+  "path": "dsh-pre-push-checks",
+  "path_key": "dsh-pre-push-checks",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "local",
+    "ref": null,
+    "subpath": null,
+    "branch": null
+  }
+}

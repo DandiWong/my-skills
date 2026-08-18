@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "6d06c36a-1c07-4f82-a3fe-5c78b299f152",
+  "path": "dsh-prose-standard",
+  "path_key": "dsh-prose-standard",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "local",
+    "ref": null,
+    "subpath": null,
+    "branch": null
+  }
+}

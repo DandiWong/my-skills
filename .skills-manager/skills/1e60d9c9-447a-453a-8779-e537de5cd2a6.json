@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "1e60d9c9-447a-453a-8779-e537de5cd2a6",
+  "path": "dsh-translate-docs",
+  "path_key": "dsh-translate-docs",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "local",
+    "ref": null,
+    "subpath": null,
+    "branch": null
+  }
+}

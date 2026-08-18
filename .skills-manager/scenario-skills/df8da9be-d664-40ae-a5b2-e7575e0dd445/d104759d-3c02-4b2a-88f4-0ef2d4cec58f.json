@@ -2,6 +2,22 @@
   "schema_version": 1,
   "scenario_id": "df8da9be-d664-40ae-a5b2-e7575e0dd445",
   "skill_id": "d104759d-3c02-4b2a-88f4-0ef2d4cec58f",
-  "sort_order": 1,
-  "tools": {}
+  "sort_order": 3,
+  "tools": {
+    "adal": true,
+    "antigravity": true,
+    "claude_code": true,
+    "codex": true,
+    "command_code": true,
+    "cortex": true,
+    "crush": true,
+    "droid": true,
+    "goose": true,
+    "mcpjam": true,
+    "omp_agent": true,
+    "opencode": true,
+    "pi": true,
+    "qwen_code": true,
+    "workbuddy": true
+  }
 }

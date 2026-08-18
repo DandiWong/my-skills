@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "22970478-6309-466d-816a-7d11544c6b0f",
+  "path": "dsh-doc-site-sync",
+  "path_key": "dsh-doc-site-sync",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "local",
+    "ref": null,
+    "subpath": null,
+    "branch": null
+  }
+}

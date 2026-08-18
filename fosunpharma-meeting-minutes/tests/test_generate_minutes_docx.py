@@ -70,23 +70,26 @@ class GenerateMinutesDocxTests(unittest.TestCase):
             },
             "participants": ["张三（复星医药/项目负责人）", "李四（合作方/技术负责人）"],
             "sections": [
-                {"heading": "一、会议目的", "items": ["对齐项目推进目标与后续输出。"]},
-                {"heading": "二、关键决策与核心结论", "items": ["双方确认后续以纪要待办表跟踪事项。"]},
+                {"heading": "二、关键结论和共识", "items": ["双方确认后续以纪要待办表跟踪事项。"]},
                 {
                     "heading": "三、详细讨论要点",
                     "subsections": [
-                        {"heading": "1. 项目范围", "items": ["需进一步补充业务范围边界。"]}
+                        {"heading": "（一）项目范围", "items": ["1. 需进一步补充业务范围边界。"]}
                     ],
                 },
                 {
-                    "heading": "四、争议 / 重点异议及结论",
+                    "heading": "四、争议项",
                     "items": [
                         {
-                            "topic": "时间安排",
-                            "discussion": "双方讨论交付节奏。",
+                            "topic": "（一）时间安排",
+                            "viewpoints": ["复星医药：期望两周内完成交付。", "合作方：建议三周以确保质量。"],
                             "conclusion": "截止时间待确认。",
                         }
                     ],
+                },
+                {
+                    "heading": "六、会议总结",
+                    "items": ["本次会议双方就项目推进达成共识，明确了后续分工与交付节奏。"],
                 },
             ],
             "actions": [
@@ -140,8 +143,8 @@ class GenerateMinutesDocxTests(unittest.TestCase):
         frontmatter = read_frontmatter(SKILL_MD)
 
         self.assertEqual(frontmatter["name"], "fosunpharma-meeting-minutes")
-        self.assertEqual(frontmatter["version"], "0.4.2")
-        self.assertIn("v0.4.2", frontmatter["description"])
+        self.assertEqual(frontmatter["version"], "0.4.5")
+        self.assertIn("v0.4.5", frontmatter["description"])
 
     def test_named_and_path_templates_preserve_expected_header_logos(self):
         payload = self.sample_payload()
@@ -198,6 +201,18 @@ class GenerateMinutesDocxTests(unittest.TestCase):
         self.assertIn("中山医院：王五、赵六", paragraphs)
         self.assertNotIn("主持人：【待补充】", paragraphs)
 
+    def test_multi_party_title_joins_three_or_more_units(self):
+        payload = self.sample_payload()
+        payload["metadata"]["参会单位"] = "复星医药，中山医院，语言桥"
+        payload["participants"] = [
+            "复星医药：张三（产品经理）",
+            "中山医院：王五（科室主任）",
+            "语言桥：赵六",
+        ]
+
+        generated = run_generator(payload)
+        self.assertEqual(generated.paragraphs[0].text, "复星医药、中山医院与语言桥")
+
     def test_manifest_matches_skill_frontmatter_and_declared_files_exist(self):
         frontmatter = read_frontmatter(SKILL_MD)
         manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
@@ -220,6 +235,44 @@ class GenerateMinutesDocxTests(unittest.TestCase):
 
         self.assertIn("python:", result.stdout)
         self.assertIn("python-docx: OK", result.stdout)
+
+    def test_viewpoints_are_rendered_without_numbering(self):
+        generated = run_generator(self.sample_payload())
+        paragraphs = [p.text for p in generated.paragraphs if p.text.strip()]
+
+        self.assertIn("复星医药：期望两周内完成交付。", paragraphs)
+        self.assertIn("合作方：建议三周以确保质量。", paragraphs)
+        self.assertNotIn("1. 复星医药：期望两周内完成交付。", paragraphs)
+        self.assertNotIn("2. 合作方：建议三周以确保质量。", paragraphs)
+        self.assertIn("结论：截止时间待确认。", paragraphs)
+
+    def test_table_columns_fill_content_width(self):
+        from docx.oxml.ns import qn as _qn
+
+        generated = run_generator(self.sample_payload())
+        section = generated.sections[0]
+        content_width = section.page_width.twips - section.left_margin.twips - section.right_margin.twips
+
+        table = generated.tables[0]
+        grid = table._tbl.tblGrid
+        cols = grid.findall(_qn("w:gridCol"))
+        widths = [int(col.get(_qn("w:w"))) for col in cols]
+        self.assertEqual(sum(widths), content_width)
+
+    def test_section_one_is_skipped_and_six_is_last(self):
+        payload = self.sample_payload()
+        payload["sections"] = [
+            {"heading": "一、会议目的", "items": ["should not appear"]},
+            {"heading": "二、关键结论和共识", "items": ["content"]},
+            {"heading": "六、会议总结", "items": ["conclusion paragraph"]},
+        ]
+        generated = run_generator(payload)
+        headings = [p.text for p in generated.paragraphs if p.style and p.style.name == "Heading 2"]
+
+        self.assertNotIn("一、会议目的", headings)
+        self.assertEqual(headings[0], "一、会议背景")
+        self.assertEqual(headings[-1], "六、会议总结")
+        self.assertEqual(headings[-2], "五、下一步行动项")
 
 
 if __name__ == "__main__":

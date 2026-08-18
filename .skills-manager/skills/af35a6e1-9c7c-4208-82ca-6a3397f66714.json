@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "af35a6e1-9c7c-4208-82ca-6a3397f66714",
+  "path": "dsh-code-review",
+  "path_key": "dsh-code-review",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "local",
+    "ref": null,
+    "subpath": null,
+    "branch": null
+  }
+}

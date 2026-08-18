@@ -622,7 +622,7 @@ public partial class WordHandler
                     // reject XML 1.0 illegal control chars at input time so the resident
                     // process doesn't accept them into the in-memory DOM only to fail at
                     // close with "save failed — data may be lost" and lose user work.
-                    ParseHelpers.ValidateXmlText(value, "text");
+                    ParseHelpers.ValidateXmlText(value, "text", allowSoftBreakChar: true);
                     // Only replace non-field static text runs. Complex fields are
                     // a multi-run sequence: [Begin][Instr]([Separate][Result])[End].
                     // Runs carrying <w:fldChar>/<w:instrText> AND any run nested

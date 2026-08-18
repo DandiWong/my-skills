@@ -12,6 +12,37 @@ public partial class WordHandler
 {
     private string AddParagraph(OpenXmlElement parent, string parentPath, int? index, Dictionary<string, string> properties)
     {
+        // NEWLINE-SEMANTICS-V2: at this block-level surface '\n' is a
+        // PARAGRAPH boundary (matching pptx and the Google Docs API); the
+        // soft line break <w:br/> is written as '\v'. A text containing
+        // '\n' therefore creates one paragraph per line, every line
+        // inheriting the same style/format props — Word's Enter key, N
+        // times. The properties dictionary is mutated in place per line and
+        // restored afterwards (never copied) so TrackingPropertyDictionary
+        // keeps recording handler reads for unsupported_property detection.
+        if (properties.TryGetValue("text", out var rawParaText) && rawParaText != null)
+        {
+            var normalized = rawParaText.Replace("\r\n", "\n").Replace("\r", "\n");
+            if (normalized.IndexOf('\n') >= 0)
+            {
+                var lines = normalized.Split('\n');
+                string firstPath = "";
+                try
+                {
+                    for (int li = 0; li < lines.Length; li++)
+                    {
+                        properties["text"] = lines[li];
+                        var p = AddParagraph(parent, parentPath, index.HasValue ? index + li : null, properties);
+                        if (li == 0) firstPath = p;
+                    }
+                }
+                finally
+                {
+                    properties["text"] = rawParaText;
+                }
+                return firstPath;
+            }
+        }
         // See RejectBareRevisionKey: the bare `revision=` literal was retired
         // when creation/action split into revision.type / revision.action.
         RejectBareRevisionKey(properties);
@@ -3201,24 +3232,30 @@ public partial class WordHandler
         // illegal control chars before constructing Text nodes. Without this, the
         // resident process saves a corrupt DOM and surfaces "save failed — data may
         // be lost" only on close, costing the user their edits.
-        Core.ParseHelpers.ValidateXmlText(text, "text");
+        Core.ParseHelpers.ValidateXmlText(text, "text", allowSoftBreakChar: true);
         // CONSISTENCY(escape-sequences): cross-handler convention — `\n` / `\t`
         // two-char escapes in --prop text= are interpreted as real newline /
         // tab. Mirrors PPTX shape-text and Excel cell-value handling. CRLF/CR
         // collapsed afterwards so all break forms route through <w:br/>.
         // CONSISTENCY(text-escape-boundary): \n / \t resolution at CLI --prop;
         // text arrives with real newlines already, just normalize CR / CRLF.
+        // NEWLINE-SEMANTICS-V2: '\v' is the canonical soft-line-break char
+        // (<w:br/>), matching Word's own object model (Chr(11)) and the
+        // Google Docs API. '\n' still degrades to a soft break HERE because a
+        // run physically cannot span paragraphs — block-level surfaces
+        // (AddParagraph) consume '\n' as a paragraph boundary before text
+        // ever reaches this run-scoped helper.
         var s = text.Replace("\r\n", "\n").Replace("\r", "\n");
         int start = 0;
         for (int i = 0; i < s.Length; i++)
         {
             char c = s[i];
-            if (c == '\n' || c == '\t')
+            if (c == '\n' || c == '\v' || c == '\t')
             {
                 if (i > start)
                     run.AppendChild(new Text(s.Substring(start, i - start)) { Space = SpaceProcessingModeValues.Preserve });
-                if (c == '\n') run.AppendChild(new Break());
-                else run.AppendChild(new TabChar());
+                if (c == '\t') run.AppendChild(new TabChar());
+                else run.AppendChild(new Break());
                 start = i + 1;
             }
         }

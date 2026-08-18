@@ -101,15 +101,15 @@ public partial class WordHandler
         string[][]? tableData = null;
         if (properties.TryGetValue("data", out var dataStr))
         {
+            // Both forms are quote-aware: a cell wrapped in double quotes may
+            // contain the separator, so `"Doe, John",30` is two cells. A plain
+            // Split(',') made it three and shifted the rest of the row.
+            // CONSISTENCY(table-data-parse): mirrored in the pptx add-table path.
             if (OfficeCli.Core.FileSource.IsResolvable(dataStr))
-                tableData = OfficeCli.Core.FileSource.ResolveLines(dataStr)
-                    .Where(l => !string.IsNullOrWhiteSpace(l))
-                    .Select(l => l.Split(',').Select(c => c.Trim()).ToArray())
-                    .ToArray();
+                tableData = OfficeCli.Core.DelimitedText.ParseGrid(
+                    OfficeCli.Core.FileSource.ResolveText(dataStr), ',', '\n');
             else
-                tableData = dataStr.Split(';')
-                    .Select(r => r.Split(',').Select(c => c.Trim()).ToArray())
-                    .ToArray();
+                tableData = OfficeCli.Core.DelimitedText.ParseGrid(dataStr, ',', ';');
         }
 
         int rows, cols;

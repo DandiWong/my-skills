@@ -1623,8 +1623,11 @@ public partial class WordHandler
             // re-navigable; without this, descendant Get calls on children
             // like /<host>/textbox[N]/tbl[K]/tr[J] fail with
             // "No txbxContent found at /body".
+            // Keep seg.Name verbatim (no lowercasing): path matching for the
+            // literal "txbxContent" is case-sensitive, so lowercasing broke
+            // round-trip when the user supplied the literal form (issue #258).
             if (canonName == "txbxContent" || canonName == "wsp")
-                canonName = seg.Name.ToLowerInvariant();
+                canonName = seg.Name;
             if (next is Paragraph navPara && !string.IsNullOrEmpty(navPara.ParagraphId?.Value))
             {
                 parentPath += "/" + canonName + $"[@paraId={navPara.ParagraphId.Value}]";

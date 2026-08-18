@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "00d41f1a-00fd-413d-b47c-9acc60e4a550",
+  "path": "dsh-trim-cot-leakage",
+  "path_key": "dsh-trim-cot-leakage",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "local",
+    "ref": null,
+    "subpath": null,
+    "branch": null
+  }
+}

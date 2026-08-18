@@ -1431,6 +1431,24 @@ internal partial class FormulaEvaluator
         return _cellIndex.TryGetValue(cellRef, out var found) ? found : null;
     }
 
+    // Row-visibility index for SUBTOTAL's ignore-hidden semantics, built lazily like _cellIndex.
+    private Dictionary<int, bool>? _rowHiddenIndex;
+    internal bool IsRowHidden(int rowNumber)
+    {
+        if (_rowHiddenIndex == null)
+        {
+            _rowHiddenIndex = new Dictionary<int, bool>();
+            foreach (var row in _sheetData.Elements<Row>())
+                if (row.RowIndex?.Value is uint idx && row.Hidden?.Value == true)
+                    _rowHiddenIndex[(int)idx] = true;
+        }
+        return _rowHiddenIndex.TryGetValue(rowNumber, out var h) && h;
+    }
+
+    // True when this evaluator's sheet carries an AutoFilter — under a filter, hidden rows are the
+    // filtered-out ones, which SUBTOTAL codes 1-11 must exclude.
+    internal bool HasAutoFilter => (_sheetData.Parent as Worksheet)?.GetFirstChild<AutoFilter>() != null;
+
     private RangeData Expand2DRange(string rangeExpr)
     {
         // Handle cross-sheet ranges like "SheetName!A1:B3"

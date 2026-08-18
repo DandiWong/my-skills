@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.4.5
+
+- Standardized chapter structure to six fixed sections: `一、会议背景` → `二、关键结论和共识` → `三、详细讨论要点` → `四、争议项` → `五、下一步行动项` → `六、会议总结`.
+- Renamed `争议项与结论` → `争议项`; renamed `会议结论` → `会议总结`; moved action items from `七` to `五`; moved conclusion from `八` to `六`.
+- Removed numeric prefixes from dispute viewpoints — each viewpoint is now a standalone line without `1.` `2.` numbering.
+- Updated section filtering logic to skip `一` and `五` (auto-rendered), treat `六` / `会议总结` / `会议结论` as conclusion.
+- Updated SKILL.md JSON example, writing rules, tests, and manifest to match new structure.
+
+## 0.4.4
+
+- Added action-item owner inference rules: infer the real owner from dialogue cues (self-volunteer, superior assignment, demander/provider) instead of defaulting to the topic raiser.
+- Standardized three-level section numbering: `一、` → `（一）` → `1.`.
+- Renamed dispute section to `争议项与结论`; replaced `discussion` field with `viewpoints` list (A/B viewpoints + conclusion), backward compatible.
+- Action-item `具体内容` now contains only the task itself, no dialogue evidence or parenthetical notes.
+- Added meeting time format `YYYY年M月D日 hh:mm-hh:mm`; multi-party participant lines are indented.
+- Reduced title line spacing (space_before 8.5pt, space_after 8.25pt).
+- Added table width normalization: columns scale to fill page content width with minimum-width enforcement to prevent awkward character wrapping.
+- Excluded meta-tasks (e.g., outputting minutes, listing questions) from action items.
+- Meeting conclusion now written as 1-2 paragraphs for management, no technical details, under 200 characters.
+- Section structure aligned to template: `一` (background, auto-rendered) → `二`–`六` (content) → `七` (action table) → `八` (conclusion). JSON no longer includes section `一`.
+- Removed duplicate `apply_cell_run_format` function; unified to `apply_run_format`.
+- Added tests for viewpoints rendering, table width normalization, and section filtering.
+
+## 0.4.3
+
+- Added meeting-time inference: derive date/time from content text first, then from uploaded filename patterns, before falling back to `【待补充】`.
+- Added multi-party meeting support: title, filename, and participant list now handle three or more participating units.
+- Updated participant rules: list by stakeholder side; use `姓名（职务）` when title is clear, bare name otherwise.
+- Added speaker-name cross-confirmation rule: infer uncertain speaker names from mutual address patterns in the transcript.
+- Added numbered-list rule for body text: enumerated situations in section body (excluding action tables and conclusion) must use `1. 2. 3.` numbering.
+- Updated `title_units()` in the generation script to join 3+ units with 顿号 + 与.
+
 ## 0.4.2
 
 - Consolidated the v0.3.9 and v0.4.1 skills under the stable `fosunpharma-meeting-minutes` name.
