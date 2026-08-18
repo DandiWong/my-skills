@@ -26,6 +26,6 @@
     "opencode": false,
     "pi": false,
     "qwen_code": true,
-    "workbuddy": true
+    "workbuddy": false
   }
 }
