@@ -92,6 +92,7 @@ Use the bare name without `/`. If the command fails, surface the error; do not r
 | Seek-safe GSAP, CSS, Anime.js, WAAPI, FLIP, paths, masks, SVG, 3D keyframes, or `hyperframes keyframes` diagnostics | `/hyperframes-keyframes` |
 | Design specs, concept, palette, typography, narration, beat planning                                                | `/hyperframes-creative`  |
 | Images, icons, logos, audio, captions, grades, LUTs, reusable media                                                 | `/media-use`             |
+| Voiceover carve, audio effect chains, or automation envelopes on a track                                            | `/hyperframes-audio`     |
 | Init, lint, check, snapshots, compare, batch render, Studio, render, publish, or diagnostics                        | `/hyperframes-cli`       |
 | Registry blocks and components                                                                                      | `/hyperframes-registry`  |
 | Figma assets, tokens, components, or storyboard frames as reconstructed motion                                      | `/figma`                 |
@@ -99,9 +100,11 @@ Use the bare name without `/`. If the command fails, surface the error; do not r
 Broad feedback about how photographic media looks or behaves also routes to
 `/media-use`, even when the user never says “color grading” or “effect”: fix
 dark/flat/boring footage, stylize a clip, hide a face, or improve a media
-reveal. Load its media-treatment policy before editing; do not substitute a
-generic LUT, CSS filter/overlay, or opacity tween for an existing canonical
-treatment primitive. Keep text/layout/motion-only edits in their owning domain.
+reveal. Read `../media-use/references/media-treatments.md` before editing a
+treatment; it governs how footage is treated, never whether media may be used.
+Do not substitute a generic LUT, CSS filter/overlay, or opacity tween for an
+existing canonical treatment primitive. Keep text/layout/motion-only edits in
+their owning domain.
 During a build with important photographic media, include one grounded
 media-polish scan in the final quality pass; leaving suitable media unchanged is
 a valid result.

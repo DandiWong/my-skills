@@ -60,7 +60,7 @@ public static class DocumentHandlerFactory
         // operation resulted in an overflow"). Only the native zip formats are
         // inspected; plugin-handled formats may not be zips and are left to
         // their own handler. See DocumentLimits for the thresholds.
-        if (ext is ".docx" or ".xlsx" or ".pptx")
+        if (IsNativeOoxml(ext))
             GuardDecompressionBomb(filePath);
 
         // CONSISTENCY(dangling-rel-repair): the reactive catch below only fires
@@ -81,7 +81,7 @@ public static class DocumentHandlerFactory
         // command exits right after the read; a resident is bound to one file).
         string openTarget = filePath;
         string? repairTemp = null;
-        if ((ext is ".docx" or ".xlsx" or ".pptx") && HasDanglingInternalRels(filePath))
+        if (IsNativeOoxml(ext) && HasDanglingInternalRels(filePath))
         {
             if (editable)
                 StripDanglingPackageRels(filePath);
@@ -272,13 +272,23 @@ public static class DocumentHandlerFactory
         }
     }
 
+    // The native zip-OOXML extensions officecli opens directly. Macro-enabled
+    // variants (.docm/.xlsm/.pptm) map to the SAME handler as their macro-free
+    // sibling: the Open XML SDK identifies the document by content-type and
+    // round-trips the vbaProject part untouched on Save, so open + in-place
+    // edit preserves macros. This gate governs OPEN only — dump / create /
+    // merge keep the macro-free whitelist, so no "rebuild into a new file" path
+    // can drop a vbaProject (a deliberate safety boundary, not an omission).
+    private static bool IsNativeOoxml(string ext) =>
+        ext is ".docx" or ".xlsx" or ".pptx" or ".docm" or ".xlsm" or ".pptm";
+
     private static IDocumentHandler OpenHandler(string filePath, string ext, bool editable)
     {
         return ext switch
         {
-            ".docx" => new WordHandler(filePath, editable),
-            ".xlsx" => new ExcelHandler(filePath, editable),
-            ".pptx" => new PowerPointHandler(filePath, editable),
+            ".docx" or ".docm" => new WordHandler(filePath, editable),
+            ".xlsx" or ".xlsm" => new ExcelHandler(filePath, editable),
+            ".pptx" or ".pptm" => new PowerPointHandler(filePath, editable),
             _      => TryOpenViaPlugin(filePath, ext, editable)
                    ?? throw UnsupportedTypeException(ext)
         };
@@ -387,12 +397,13 @@ public static class DocumentHandlerFactory
 
     private static CliException UnsupportedTypeException(string ext) =>
         new CliException(
-            $"Unsupported file type: {ext}. Supported: .docx, .xlsx, .pptx. " +
+            $"Unsupported file type: {ext}. Supported: .docx, .xlsx, .pptx " +
+            $"(and macro-enabled .docm, .xlsm, .pptm for open/edit). " +
             $"Other formats may be opened via plugins — run `officecli plugins list` to see installed plugins, " +
             $"or see plugins/plugin-protocol.md for installation paths.")
         {
             Code = "unsupported_type",
-            ValidValues = [".docx", ".xlsx", ".pptx"]
+            ValidValues = [".docx", ".xlsx", ".pptx", ".docm", ".xlsm", ".pptm"]
         };
 
     private static bool IsEncodingException(Exception ex)

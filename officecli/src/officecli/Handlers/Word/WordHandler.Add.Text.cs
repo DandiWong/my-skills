@@ -587,52 +587,42 @@ public partial class WordHandler
         // the anchor enums.
         FrameProperties? frameProps = null;
         FrameProperties EnsureFramePr() => frameProps ??= new FrameProperties();
+        // CONSISTENCY(length-units): framePr size/position slots accept pt/cm/in
+        // (bare = twips) via SpacingConverter, matching tc padding and every other
+        // length slot. Convert to twips first, then enforce the ST_(Signed)TwipsMeasure
+        // ±31680 bound on the resolved twips.
+        int FrameTwips(string raw, string prop, bool signed)
+        {
+            int tw;
+            try
+            {
+                tw = signed
+                    ? OfficeCli.Core.SpacingConverter.ParseWordSpacingSigned(raw)
+                    : (int)OfficeCli.Core.SpacingConverter.ParseWordSpacing(raw);
+            }
+            catch (ArgumentException)
+            {
+                // Re-wrap so the message names the slot ("auto" and other
+                // non-length tokens are rejected here, not silently written).
+                throw new ArgumentException($"Invalid '{prop}' value: '{raw}'. Must resolve to a twips length (bare number, or a pt/cm/in value).");
+            }
+            int lo = signed ? -31680 : 0;
+            if (tw < lo || tw > 31680)
+                throw new ArgumentException($"Invalid '{prop}' value: '{raw}'. Must resolve to {lo}..31680 twips (bare number, or a pt/cm/in length).");
+            return tw;
+        }
         if (properties.TryGetValue("framePr.w", out var fpW) || properties.TryGetValue("framepr.w", out fpW))
-        {
-            // OOXML w:framePr/@w:w is ST_TwipsMeasure = unsigned int with
-            // MaxInclusive=31680. Width is StringValue in the SDK so a raw
-            // "auto" or out-of-range integer passes through and Word 422s.
-            if (!uint.TryParse(fpW, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var fwV)
-                || fwV > 31680)
-                throw new ArgumentException($"Invalid 'framePr.w' value: '{fpW}'. Must be a non-negative integer 0..31680 (twips, ST_TwipsMeasure).");
-            EnsureFramePr().Width = fpW;
-        }
+            EnsureFramePr().Width = FrameTwips(fpW, "framePr.w", signed: false).ToString();
         if (properties.TryGetValue("framePr.h", out var fpH) || properties.TryGetValue("framepr.h", out fpH))
-        {
-            if (!uint.TryParse(fpH, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var fhV)
-                || fhV > 31680)
-                throw new ArgumentException($"Invalid 'framePr.h' value: '{fpH}'. Must be a non-negative integer 0..31680 (twips, ST_TwipsMeasure).");
-            EnsureFramePr().Height = fhV;
-        }
+            EnsureFramePr().Height = (uint)FrameTwips(fpH, "framePr.h", signed: false);
         if (properties.TryGetValue("framePr.x", out var fpX) || properties.TryGetValue("framepr.x", out fpX))
-        {
-            // ST_SignedTwipsMeasure: -31680 <= x <= 31680. X is StringValue.
-            if (!int.TryParse(fpX, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var fxV)
-                || fxV < -31680 || fxV > 31680)
-                throw new ArgumentException($"Invalid 'framePr.x' value: '{fpX}'. Must be a signed integer -31680..31680 (twips, ST_SignedTwipsMeasure).");
-            EnsureFramePr().X = fpX;
-        }
+            EnsureFramePr().X = FrameTwips(fpX, "framePr.x", signed: true).ToString();
         if (properties.TryGetValue("framePr.y", out var fpY) || properties.TryGetValue("framepr.y", out fpY))
-        {
-            if (!int.TryParse(fpY, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var fyV)
-                || fyV < -31680 || fyV > 31680)
-                throw new ArgumentException($"Invalid 'framePr.y' value: '{fpY}'. Must be a signed integer -31680..31680 (twips, ST_SignedTwipsMeasure).");
-            EnsureFramePr().Y = fpY;
-        }
+            EnsureFramePr().Y = FrameTwips(fpY, "framePr.y", signed: true).ToString();
         if (properties.TryGetValue("framePr.hSpace", out var fpHS) || properties.TryGetValue("framepr.hspace", out fpHS))
-        {
-            if (!uint.TryParse(fpHS, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var fhsV)
-                || fhsV > 31680)
-                throw new ArgumentException($"Invalid 'framePr.hSpace' value: '{fpHS}'. Must be a non-negative integer 0..31680 (twips, ST_TwipsMeasure).");
-            EnsureFramePr().HorizontalSpace = fpHS;
-        }
+            EnsureFramePr().HorizontalSpace = FrameTwips(fpHS, "framePr.hSpace", signed: false).ToString();
         if (properties.TryGetValue("framePr.vSpace", out var fpVS) || properties.TryGetValue("framepr.vspace", out fpVS))
-        {
-            if (!uint.TryParse(fpVS, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var fvsV)
-                || fvsV > 31680)
-                throw new ArgumentException($"Invalid 'framePr.vSpace' value: '{fpVS}'. Must be a non-negative integer 0..31680 (twips, ST_TwipsMeasure).");
-            EnsureFramePr().VerticalSpace = fpVS;
-        }
+            EnsureFramePr().VerticalSpace = FrameTwips(fpVS, "framePr.vSpace", signed: false).ToString();
         if (properties.TryGetValue("framePr.wrap", out var fpWrap) || properties.TryGetValue("framepr.wrap", out fpWrap))
         {
             EnsureFramePr().Wrap = fpWrap.ToLowerInvariant() switch

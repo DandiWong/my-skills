@@ -32,7 +32,15 @@ static partial class CommandBuilder
         + "Text values follow the same rules as --prop on a single command: \\n starts a new "
         + "paragraph, \\v is a line break within one. A .docx dump taken before that split "
         + "encoded line breaks as \\n; replay one by putting "
-        + "{\"command\":\"meta\",\"dumpVersion\":1} first and its \\n are read as line breaks again.";
+        + "{\"command\":\"meta\",\"dumpVersion\":1} first and its \\n are read as line breaks again.\n\n"
+        + "Clean-slate replay (dump->batch into a fresh target): `create` refuses to overwrite an "
+        + "existing file (exit 1, code file_exists) and refuses one a live resident still holds "
+        + "(exit 1, code file_locked). A script that ignores create's exit code then replays onto "
+        + "the PREVIOUS run's document, so add style / add bookmark items fail with 'already exists'. "
+        + "Reliable idiom: close -> rm -> create -> batch -> close. rm BEFORE create matters: with the "
+        + "on-disk file gone, create auto-closes a resident still pinning that path; the leading close "
+        + "just covers the handle-release window. (`create --force` overwrites an existing file but "
+        + "does NOT release a resident lock — close first when a resident is up.)";
 
     /// <summary>
     /// Apply a batch of commands against an already-open handler. This is the
