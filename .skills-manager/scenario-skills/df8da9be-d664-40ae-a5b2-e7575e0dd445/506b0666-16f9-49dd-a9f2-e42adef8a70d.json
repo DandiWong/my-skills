@@ -6,9 +6,9 @@
   "tools": {
     "adal": true,
     "amp": true,
-    "antigravity": true,
+    "antigravity": false,
     "claude_code": false,
-    "codex": true,
+    "codex": false,
     "command_code": true,
     "cortex": true,
     "crush": true,
@@ -21,10 +21,10 @@
     "hermes": true,
     "kiro": true,
     "mcpjam": true,
-    "omp_agent": true,
+    "omp_agent": false,
     "openclaw": true,
-    "opencode": true,
-    "pi": true,
+    "opencode": false,
+    "pi": false,
     "qwen_code": true,
     "workbuddy": true
   }
