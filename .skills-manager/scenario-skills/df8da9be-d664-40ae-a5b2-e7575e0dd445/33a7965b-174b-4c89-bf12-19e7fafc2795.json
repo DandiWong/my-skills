@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scenario_id": "df8da9be-d664-40ae-a5b2-e7575e0dd445",
   "skill_id": "33a7965b-174b-4c89-bf12-19e7fafc2795",
-  "sort_order": 26,
+  "sort_order": 23,
   "tools": {
     "adal": true,
     "amp": true,
@@ -18,6 +18,7 @@
     "cortex": true,
     "crush": true,
     "cursor": true,
+    "deepseek_harness": true,
     "droid": true,
     "gemini_cli": true,
     "github_copilot": true,

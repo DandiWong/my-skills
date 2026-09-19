@@ -3,5 +3,18 @@
   "scenario_id": "df8da9be-d664-40ae-a5b2-e7575e0dd445",
   "skill_id": "763612f0-e412-4a75-a668-6a9257ee341c",
   "sort_order": 3,
-  "tools": {}
+  "tools": {
+    "antigravity": true,
+    "claude_code": true,
+    "codebuddy": true,
+    "codex": true,
+    "command_code": true,
+    "deepseek_harness": true,
+    "droid": true,
+    "omp_agent": true,
+    "opencode": true,
+    "pi": true,
+    "qwen_code": true,
+    "workbuddy": true
+  }
 }
