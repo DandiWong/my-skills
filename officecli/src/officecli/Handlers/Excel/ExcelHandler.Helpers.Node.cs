@@ -295,7 +295,9 @@ public partial class ExcelHandler
     private DocumentNode CellToNode(string sheetName, Cell cell, WorksheetPart? part = null, Core.FormulaEvaluator? evaluator = null)
     {
         var cellRef = cell.CellReference?.Value ?? "?";
-        var formula = cell.CellFormula?.Text is { } fText
+        // Shared-formula children hold an empty <f/>; ResolveText expands them
+        // from the master so they read back like any other formula cell.
+        var formula = Core.SharedFormulaResolver.ResolveText(cell) is { } fText
             ? Core.ModernFunctionQualifier.Unqualify(fText)
             : null;
         string type;
@@ -534,7 +536,13 @@ public partial class ExcelHandler
                                 node.Format["font.color"] = ParseHelpers.FormatHexColor(font.Color.Rgb.Value);
                             else if (font.Color?.Theme?.Value != null)
                             {
-                                var themeName = ParseHelpers.ExcelThemeIndexToName(font.Color.Theme.Value);
+                                // Carry @tint into the value ("accent1+tint40").
+                                // Dropping it made Get report a full-strength
+                                // scheme color for Excel's stock "Lighter 40%"
+                                // shades, so dump→batch flattened every tinted
+                                // font and the readback could not be verified.
+                                var themeName = ParseHelpers.ExcelThemeNameWithTint(
+                                    font.Color.Theme.Value, font.Color.Tint?.Value);
                                 if (themeName != null) node.Format["font.color"] = themeName;
                             }
                             // vertAlign (superscript/subscript) readback. Canonical cell
@@ -616,19 +624,24 @@ public partial class ExcelHandler
                                     if (pf!.ForegroundColor?.Rgb?.Value != null)
                                         node.Format["fill"] = ParseHelpers.FormatHexColor(pf.ForegroundColor.Rgb.Value);
                                     else if (pf.ForegroundColor?.Theme?.Value != null
-                                        && ParseHelpers.ExcelThemeIndexToName(pf.ForegroundColor.Theme.Value) is { } fgTheme)
+                                        && ParseHelpers.ExcelThemeNameWithTint(
+                                            pf.ForegroundColor.Theme.Value,
+                                            pf.ForegroundColor.Tint?.Value) is { } fgTheme)
                                         node.Format["fill"] = fgTheme;
                                     if (pf.BackgroundColor?.Rgb?.Value != null)
                                         node.Format["fillBg"] = ParseHelpers.FormatHexColor(pf.BackgroundColor.Rgb.Value);
                                     else if (pf.BackgroundColor?.Theme?.Value != null
-                                        && ParseHelpers.ExcelThemeIndexToName(pf.BackgroundColor.Theme.Value) is { } bgTheme)
+                                        && ParseHelpers.ExcelThemeNameWithTint(
+                                            pf.BackgroundColor.Theme.Value,
+                                            pf.BackgroundColor.Tint?.Value) is { } bgTheme)
                                         node.Format["fillBg"] = bgTheme;
                                 }
                                 else if (pf?.ForegroundColor?.Rgb?.Value != null)
                                     node.Format["fill"] = ParseHelpers.FormatHexColor(pf.ForegroundColor.Rgb.Value);
                                 else if (pf?.ForegroundColor?.Theme?.Value != null)
                                 {
-                                    var themeName = ParseHelpers.ExcelThemeIndexToName(pf.ForegroundColor.Theme.Value);
+                                    var themeName = ParseHelpers.ExcelThemeNameWithTint(
+                                        pf.ForegroundColor.Theme.Value, pf.ForegroundColor.Tint?.Value);
                                     if (themeName != null) node.Format["fill"] = themeName;
                                 }
                             }

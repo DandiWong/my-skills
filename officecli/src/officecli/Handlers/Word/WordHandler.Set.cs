@@ -68,8 +68,10 @@ public partial class WordHandler
     }
 
     public List<string> Set(string path, Dictionary<string, string> properties)
+        => MarkModified(() => SetCore(path, properties));
+
+    private List<string> SetCore(string path, Dictionary<string, string> properties)
     {
-        Modified = true;
         LastSetWarnings = new List<string>();
         LastUnrecognizedLatex = new List<string>();
         LastSetNewPath = null;
@@ -1135,7 +1137,7 @@ public partial class WordHandler
                 // style id does not exist in the styles part — opening
                 // such a doc in Word shows a "style not found" badge.
                 if (warnings != null && !StyleIdExists(value))
-                    warnings.Add($"style '{value}' not found in styles part — will be referenced as-is");
+                    warnings.Add(StyleNotFoundWarning(value));
                 pProps.ParagraphStyleId = new ParagraphStyleId { Val = value };
                 return true;
             case "stylename":
@@ -1163,11 +1165,22 @@ public partial class WordHandler
                 // CONSISTENCY(lenient-spacing): mirror Add — accept cm/in/pt/twips via SpacingConverter.
                 // BUG-DUMP-NEGIND: signed.
                 indentL.Left = SpacingConverter.ParseWordSpacingSigned(value).ToString();
+                // BUG-IND-ALIAS (#367): w:start is the ISO/strict spelling of
+                // w:left. A source that uses it (Google Docs / Word-for-Mac
+                // exports) kept the OLD w:start alongside our new w:left, so the
+                // element carried two conflicting indents; whichever one a later
+                // normalizing save collapses decides the result, which looked
+                // like the indent randomly disappearing. Fold the aliases on
+                // BOTH sides so the element never mixes spellings (a lone
+                // w:end="0" left behind is not a conflict, but the next tool to
+                // touch it may make it one).
+                WordIndentAliases.Normalize(indentL);
                 return true;
             case "rightindent" or "indentright":
                 var indentR = pProps.Indentation ?? (pProps.Indentation = new Indentation());
                 // BUG-DUMP-NEGIND: signed.
                 indentR.Right = SpacingConverter.ParseWordSpacingSigned(value).ToString();
+                WordIndentAliases.Normalize(indentR); // BUG-IND-ALIAS (#367)
                 return true;
             case "hangingindent" or "hanging":
                 var indentH = pProps.Indentation ?? (pProps.Indentation = new Indentation());

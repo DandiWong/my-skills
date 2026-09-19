@@ -269,7 +269,7 @@ public partial class PowerPointHandler
         }
         pending.forEach(function(el) {
             try {
-                katex.render(el.dataset.formula, el, { throwOnError: false, displayMode: true });
+                katex.render(el.dataset.formula, el, { throwOnError: false, displayMode: el.dataset.display === '1' });
                 el.classList.add('katex-rendered');
             } catch(e) { el.textContent = el.dataset.formula + ' (Error: ' + e.message + '. See https://katex.org/docs/supported.html for supported syntax.)'; }
         });
@@ -362,17 +362,7 @@ public partial class PowerPointHandler
         var spTree = notesPart?.NotesSlide?.CommonSlideData?.ShapeTree;
         if (spTree == null) return;
 
-        Shape? notesShape = null;
-        foreach (var shape in spTree.Elements<Shape>())
-        {
-            var ph = shape.NonVisualShapeProperties?.ApplicationNonVisualDrawingProperties
-                ?.GetFirstChild<PlaceholderShape>();
-            if (ph?.Index?.Value == 1)
-            {
-                notesShape = shape;
-                break;
-            }
-        }
+        var notesShape = FindNotesBodyShape(spTree);
         if (notesShape == null) return;
 
         var paragraphs = notesShape.TextBody?.Elements<Drawing.Paragraph>().ToList()
