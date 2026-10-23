@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "d78cfa6a-513b-49a9-998d-371f1e29f50a",
+  "path": "typesafe-ai",
+  "path_key": "typesafe-ai",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "skillssh",
+    "ref": "typesafe-ai/skills/typesafe-ai",
+    "subpath": "skills/typesafe-ai",
+    "branch": null
+  }
+}

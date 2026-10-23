@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "3f0226bf-5b3d-4286-91c5-54a770e0af67",
+  "path": "error-discovery",
+  "path_key": "error-discovery",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "https://github.com/ai-evals-course/evals-skills",
+    "subpath": "skills/error-discovery",
+    "branch": null
+  }
+}

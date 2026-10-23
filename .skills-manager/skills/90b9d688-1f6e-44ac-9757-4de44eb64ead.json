@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "90b9d688-1f6e-44ac-9757-4de44eb64ead",
+  "path": "build-review-interface",
+  "path_key": "build-review-interface",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "https://github.com/ai-evals-course/evals-skills",
+    "subpath": "skills/build-review-interface",
+    "branch": null
+  }
+}

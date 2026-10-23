@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "scenario_id": "df8da9be-d664-40ae-a5b2-e7575e0dd445",
+  "skill_id": "d78cfa6a-513b-49a9-998d-371f1e29f50a",
+  "sort_order": 2,
+  "tools": {
+    "antigravity": true,
+    "claude_code": true,
+    "codebuddy": true,
+    "codex": true,
+    "command_code": true,
+    "deepseek_harness": true,
+    "droid": true,
+    "goose": true,
+    "mistral_vibe": true,
+    "omp_agent": true,
+    "opencode": true,
+    "pi": true,
+    "qwen_code": true,
+    "workbuddy": true
+  }
+}

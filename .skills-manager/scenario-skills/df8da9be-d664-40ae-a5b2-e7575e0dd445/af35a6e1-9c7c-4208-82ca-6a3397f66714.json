@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scenario_id": "df8da9be-d664-40ae-a5b2-e7575e0dd445",
   "skill_id": "af35a6e1-9c7c-4208-82ca-6a3397f66714",
-  "sort_order": 1,
+  "sort_order": 3,
   "tools": {
     "antigravity": true,
     "claude_code": true,
@@ -11,6 +11,8 @@
     "command_code": true,
     "deepseek_harness": true,
     "droid": true,
+    "goose": true,
+    "mistral_vibe": true,
     "omp_agent": true,
     "opencode": true,
     "pi": true,

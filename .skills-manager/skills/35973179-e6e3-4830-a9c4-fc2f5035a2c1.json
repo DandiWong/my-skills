@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "35973179-e6e3-4830-a9c4-fc2f5035a2c1",
+  "path": "validate-evaluator",
+  "path_key": "validate-evaluator",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "https://github.com/ai-evals-course/evals-skills",
+    "subpath": "skills/validate-evaluator",
+    "branch": null
+  }
+}

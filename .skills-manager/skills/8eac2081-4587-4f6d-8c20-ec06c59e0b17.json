@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "8eac2081-4587-4f6d-8c20-ec06c59e0b17",
+  "path": "generate-synthetic-data",
+  "path_key": "generate-synthetic-data",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "https://github.com/ai-evals-course/evals-skills",
+    "subpath": "skills/generate-synthetic-data",
+    "branch": null
+  }
+}

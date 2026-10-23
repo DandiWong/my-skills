@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "eae61105-0eba-49de-a293-5a4b2290ec9d",
+  "path": "write-judge-prompt",
+  "path_key": "write-judge-prompt",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "https://github.com/ai-evals-course/evals-skills",
+    "subpath": "skills/write-judge-prompt",
+    "branch": null
+  }
+}

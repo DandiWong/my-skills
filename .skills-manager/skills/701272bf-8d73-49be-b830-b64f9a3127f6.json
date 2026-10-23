@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "701272bf-8d73-49be-b830-b64f9a3127f6",
+  "path": "eval-audit",
+  "path_key": "eval-audit",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "https://github.com/ai-evals-course/evals-skills",
+    "subpath": "skills/eval-audit",
+    "branch": null
+  }
+}

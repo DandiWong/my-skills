@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "skill_id": "59a8a1b7-5189-4a3d-88fa-c1f0a369768f",
+  "path": "evaluate-rag",
+  "path_key": "evaluate-rag",
+  "enabled": true,
+  "tags": [],
+  "source": {
+    "type": "git",
+    "ref": "https://github.com/ai-evals-course/evals-skills",
+    "subpath": "skills/evaluate-rag",
+    "branch": null
+  }
+}
